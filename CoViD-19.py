@@ -86,7 +86,7 @@ scaleError       = 3
 farFromMax       = 0.95
 deathFraction    = 0.08
 totalPopulation  = 60e6
-tStart           =   26 # [Day]
+tStart           =   29 # [Day]
 tStop            =  100 # [Day]
 country          = 'China'
 province         = 'Hubei'
@@ -122,10 +122,9 @@ myCanvModels.Divide(1,2)
 myGraphTmp1 = TGraph()
 myGraphTmp2 = TGraph()
 
-t0 = 6
-timeList = [t0, t0+8, t0+8+15, t0+8+15+60, t0+8+15+60+20, t0+8+15+60+20+30, t0+8+15+60+20+30+20, 1000]
-#timeList = [t0, t0+8, t0+8+15, t0+8+15+60, t0+8+15+60+20, t0+8+15+60+20+30, t0+8+15+60+20+30+20, 1000]
-#timeList = [t0, t0+8, t0+8+15, t0+8+15+20, t0+8+15+20+20, t0+8+15+20+20+30, t0+8+15+20+20+30+20, 1000]
+t0 = 8
+#timeList = [t0, t0+10, t0+10+9, t0+10+9+60, t0+10+9+60+20, t0+10+9+60+20+30, t0+10+9+60+20+30+20, 1000]
+timeList = [t0, t0+10, t0+10+9, t0+10+9+20, t0+10+9+20+20, t0+10+9+20+20+30, t0+10+9+20+20+30+20, 1000]
 
 myCanvModels.cd(1)
 myGraphTmp1.SetPoint(myGraphTmp1.GetN(), 0, 0)
@@ -143,15 +142,15 @@ myGraphTmp2.Draw()
 myGraphTmp2.GetXaxis().SetTitle('Time (days)')
 myGraphTmp2.GetYaxis().SetTitle('R_{0}')
 
-parList = [[000, 1.53, 1.31],
-           [000, 1.44, 1.31],
-           [000, 1.383, 1.31],
-           [000, 1.67, 1.31],
-           [000, 1.37, 1.31],
-           [000, 1.67, 1.31],
-           [000, 1.37, 1.31]]
+parList = [[000, 1.51,  1.31],
+           [000, 1.44,  1.31],
+           [000, 1.382, 1.31],
+           [000, 1.67,  1.31],
+           [000, 1.36,  1.31],
+           [000, 1.67,  1.31],
+           [000, 1.36,  1.31]]
 
-evolve = evolution([230, 1.67, 1.31], 0, timeList[0], deathFraction, totalPopulation)
+evolve = evolution([230, 1.62, 1.31], 0, timeList[0], deathFraction, totalPopulation)
 graphN, graphR0 = evolve.combineEvolutions(parList, timeList, deathFraction, totalPopulation)
 #graphN  = evolve.smearing(graphN)
 #graphR0 = evolve.smearing(graphR0)
@@ -161,16 +160,16 @@ graphN.Draw('L same')
 myCanvModels.cd(2)
 graphR0.Draw('L same')
 """
-evolve1 = evolution([100, 1.37, 1.31], 0, 1000, 0.08, totalPopulation)
+evolve1 = evolution([100, 1.36, 1.31], 0, 1000, 0.08, totalPopulation)
 graph1 = evolve1.getGraphN()
 graph1.Draw('L same')
 
-evolve2 = evolution([100, 1.37, 1.36], 0, 1000, 0.08, totalPopulation)
+evolve2 = evolution([100, 1.36, 1.36], 0, 1000, 0.08, totalPopulation)
 graph2 = evolve2.getGraphN()
 graph2.SetLineColor(4)
 graph2.Draw('L same')
 
-evolve3 = evolution([100, 1.37, 1.0], 0, 1000, 0.08, totalPopulation)
+evolve3 = evolution([100, 1.36, 1.0], 0, 1000, 0.08, totalPopulation)
 graph3 = evolve3.getGraphN()
 graph3.SetLineColor(1)
 graph3.Draw('L same')
@@ -216,14 +215,13 @@ myGraphActive.Draw('APE1')
 myGraphActive.GetHistogram().GetXaxis().SetTitle('Time (days)')
 myGraphActive.GetHistogram().GetYaxis().SetTitle('Active cases affected by CoViD-19')
 
-graphN.Draw('L same')
+#graphN.Draw('L same')
 
 xValues    = [i                            for i in range(len(active.keys()))          if i >= tStart and i <= tStop]
 yValues    = [active[k]                    for i,k in enumerate(sorted(active.keys())) if i >= tStart and i <= tStop]
 erryValues = [sqrt(active[k]) * scaleError for i,k in enumerate(sorted(active.keys())) if i >= tStart and i <= tStop]
-evActive   = evolution([active[sorted(active.keys())[tStart]], 1.5, 1.31], tStart, tStop, deathFraction, totalPopulation)
+evActive   = evolution([active[sorted(active.keys())[int(tStart)]], 1.4, 1.31], tStart, tStop, deathFraction, totalPopulation)
 evActive.runOptimization(xValues, yValues, erryValues, [2])
-print 'AAA CCC', evActive.totalRecovered(1e3)
 evActiveGraph = evActive.getGraphN()
 evActiveGraph.Draw('PL same')
 statActive = evActive.addStats()
@@ -394,7 +392,7 @@ myGraph02.GetHistogram().GetYaxis().SetTitle('Active cases')
 xValues    = [i                            for i in range(len(active.keys()))          if i >= tStart and i <= tStop]
 yValues    = [active[k]                    for i,k in enumerate(sorted(active.keys())) if i >= tStart and i <= tStop]
 erryValues = [sqrt(active[k]) * scaleError for i,k in enumerate(sorted(active.keys())) if i >= tStart and i <= tStop]
-evActive02 = evolution([active[sorted(active.keys())[tStart]], 2.6, 2.4], tStart, tStop, 0.04, 60e6)
+evActive02 = evolution([active[sorted(active.keys())[int(tStart)]], 2.6, 2.4], tStart, tStop, 0.04, 60e6)
 evActive02.runOptimization(xValues, yValues, erryValues, [])
 
 evActiveGraph02 = evActive02.getGraphN()

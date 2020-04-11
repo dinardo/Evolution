@@ -9,7 +9,7 @@ from math  import sqrt, log, exp, pi
 from ROOT  import TMinuit, Long, Double, TString, TPaveText, TGraph, TF1
 
 class evolution(object):
-    def __init__(self, parValues, tStart, tStop, deathFraction, totalPopulation, recovered = 0):
+    def __init__(self, parValues, tStart, tStop, deathFraction, totalPopulation, recovered = 0.):
         self.parNames        = ['Initial population', 'Growth rate', 'Recovery rate']
         self.parValues       = parValues
         self.tStart          = tStart
@@ -17,7 +17,7 @@ class evolution(object):
         self.deathFraction   = deathFraction
         self.totalPopulation = totalPopulation
         self.recovered       = recovered
-        self.dt              = 0.1 # [Day]
+        self.dt              = 0.2 # [Day]
 
         self.nMeas, self.chi2, self.dof = 0., 0., 0.
 
@@ -31,14 +31,12 @@ class evolution(object):
         T        = t - self.tStart
         C        = self.totalPopulation
         integral = 0.
-        r        = 0.
-#        infected = N + self.recovered
-#        r        = par[1] * (1. - self.deathFraction * infected / C) * (1. - infected / C)
+        infected = N + self.recovered
+        r        = par[1] * (1. - self.deathFraction * infected / C) * (1. - infected / C)
 
         for n in range(int(T/self.dt)):
             Nn = N
             infected = N + self.recovered + integral * par[2] * self.dt
-#            C += par[3] * N * (1. - C / self.totalPopulation)
             r = par[1] * (1. - self.deathFraction * infected / C) * (1. - infected / C)
             N += self.dt * (N * r - N * par[2])
             integral += Nn
@@ -51,13 +49,10 @@ class evolution(object):
     def totalRecovered(self, up2Time):
         integral = 0.
 
-#        for i in range(self.tStart,int(up2Time)):
-#            integral += self.evolveActive(i, self.parValues)[1]
-        for i in range(int((up2Time-self.tStart)/self.dt)):
+        for i in range(int((up2Time - self.tStart)/self.dt)):
             integral += self.evolveActive(self.tStart + i*self.dt, self.parValues)[1]
 
         return self.recovered + integral * self.parValues[2] * self.dt
-#        return self.recovered + integral * self.parValues[2]
 
     def eval(self, time):
         return self.evolveActive(time, self.parValues)[1]
@@ -150,8 +145,6 @@ class evolution(object):
     def getGraphN(self):
         myGraph = TGraph()
 
-#        for i in range(self.tStart,self.tStop):
-#            myGraph.SetPoint(myGraph.GetN(), i, self.evolveActive(i, self.parValues)[1])
         for i in range(int((self.tStop - self.tStart)/self.dt)):
             myGraph.SetPoint(myGraph.GetN(), self.tStart + i*self.dt, self.evolveActive(self.tStart + i*self.dt, self.parValues)[1])
 
@@ -167,8 +160,8 @@ class evolution(object):
     def getGraphR0(self):
         myGraph = TGraph()
 
-        for i in range(self.tStart+1, self.tStop):
-            myGraph.SetPoint(myGraph.GetN(), i-1, self.evolveActive(i, self.parValues)[0])
+        for i in range(int((self.tStop - self.tStart)/self.dt)):
+            myGraph.SetPoint(myGraph.GetN(), self.tStart + (i-1)*self.dt, self.evolveActive(self.tStart + i*self.dt, self.parValues)[0])
 
         myGraph.SetLineColor(2)
         myGraph.SetLineWidth(3)
@@ -189,11 +182,10 @@ class evolution(object):
         for t,par in enumerate(parList):
             par[0]     = val
             evolve     = evolution(par, timeList[t], timeList[t+1], deathFraction, totalPopulation, recovered)
-            print 'AAA BBB', evolve.totalRecovered(timeList[t]), evolve.eval(timeList[t])
 
             recovered += evolve.totalRecovered(timeList[t+1])
             val        = evolve.eval(timeList[t+1])
-            print '\nAAA', recovered, val
+
             graphN     = evolve.getGraphN()
             graphR0    = evolve.getGraphR0()
 
@@ -205,21 +197,22 @@ class evolution(object):
 
         return myGraphN, myGraphR0
 
-    def smearing(self, graph, sigma = 4):
-        mean    =   0
-        nSigma  = 100
+    def smearing(self, graph, sigma = 2.):
+        mean    =   0.
+        nSigma  = 100.
         myGraph = TGraph()
 
         normalize = 0.
-        for i in range(graph.GetN() + nSigma*sigma):
-            normalize += self.logNormal(i, mean, sigma)
+        for i in range(int(graph.GetN() + nSigma*sigma/self.dt)):
+            normalize += self.logNormal(i*self.dt, mean, sigma)
+        normalize *= self.dt
 
-        for i in range(graph.GetN() + nSigma*sigma):
+        for i in range(int(graph.GetN() + nSigma*sigma/self.dt)):
             convolve = 0.
             for j in range(graph.GetN()):
-                convolve += graph.GetY()[j] * self.logNormal(self.tStart + i - graph.GetX()[j], mean, sigma) / normalize
+                convolve += graph.GetY()[j] * self.logNormal(graph.GetX()[0] + i*self.dt - graph.GetX()[j], mean, sigma)
 
-            myGraph.SetPoint(myGraph.GetN(), self.tStart + i, convolve)
+            myGraph.SetPoint(myGraph.GetN(), graph.GetX()[0] + i*self.dt, convolve * self.dt / normalize)
 
         myGraph.SetLineColor(2)
         myGraph.SetLineWidth(3)
@@ -232,5 +225,5 @@ class evolution(object):
 
     def logNormal(self, x, mean, sigma):
         if x <= 0: return 0.
-        arg = (log(x) - mean) / sigma if sigma != 0 else 0
+        arg = ((log(x) - mean) / sigma) if sigma != 0 else 0.
         return 1. / (x * sigma * sqrt(2.*pi)) * exp(-arg*arg / 2.)
