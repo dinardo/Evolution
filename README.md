@@ -6,5 +6,5 @@ Basic assumptions:
 - the disease can be spread to other individuals from the infected ones
 - the infected individuals can recover (either survive or die)
 - recovered individuals can not become re-infected
-- asymptomatic cases are considered
+- both symptomatic and asymptomatic cases are considered
 - the system is closed (no "natural" demographic change)
