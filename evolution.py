@@ -9,15 +9,14 @@ from math  import sqrt, log, exp, pi
 from ROOT  import TMinuit, Long, Double, TString, TPaveText, TGraph, TF1
 
 class evolution(object):
-    def __init__(self, parValues, tStart, tStop, deathFraction, totalPopulation, recovered = 0.):
-        self.parNames        = ['Initial population', 'Growth rate', 'Recovery rate']
-        self.parValues       = parValues
-        self.tStart          = tStart
-        self.tStop           = tStop
-        self.deathFraction   = deathFraction
-        self.totalPopulation = totalPopulation
-        self.recovered       = recovered
-        self.dt              = 0.2 # [Day]
+    def __init__(self, parValues, tStart, tStop, deathFraction, historyActive = 0.):
+        self.parNames      = ['Initial population', 'Growth rate', 'Recovery rate', 'Symptomatic fraction', 'Carrying capacity']
+        self.parValues     = parValues
+        self.tStart        = tStart
+        self.tStop         = tStop
+        self.deathFraction = deathFraction
+        self.historyActive = historyActive
+        self.dt            = 0.2 # [Day]
 
         self.nMeas, self.chi2, self.dof = 0., 0., 0.
 
@@ -27,32 +26,35 @@ class evolution(object):
         return self.evolveActive(t[0],par)[1]
 
     def evolveActive(self, t, par):
-        N        = par[0]
-        T        = t - self.tStart
-        C        = self.totalPopulation
-        integral = 0.
-        infected = N + self.recovered
-        r        = par[1] * (1. - self.deathFraction * infected / C) * (1. - infected / C)
+        N             = par[0] / par[3]
+        T             = t - self.tStart
+        C             = par[4]
+        r             = 0.
+        historyActive = self.historyActive / par[3]
+        deathFraction = self.deathFraction * par[3]
 
-        for n in range(int(T/self.dt)):
+        for n in range(int(round(T/self.dt,1))):
             Nn = N
-            infected = N + self.recovered + integral * par[2] * self.dt
-            r = par[1] * (1. - self.deathFraction * infected / C) * (1. - infected / C)
-            N += self.dt * (N * r - N * par[2])
-            integral += Nn
+            totalInfected = N + historyActive * par[2] * self.dt
+            r = par[1] * (1. - deathFraction * totalInfected / C) * (1. - totalInfected / C)
+            N += self.dt * (N * r - par[3] * N * par[2] - (1. - par[3]) * N * par[2])
+            historyActive += Nn
 
-        return [(r/par[2]) if par[2] != 0. else 0., N]
+        return [(r/par[2]) if par[2] != 0. else 0., N * par[3]]
+
+    def sumHistoryActive(self, up2Time):
+        return self.totalRecovered(up2Time) / (self.parValues[2] * self.dt)
 
     def totalInfected(self, up2Time):
         return self.evolveActive(up2Time, self.parValues)[1] + self.totalRecovered(up2Time)
 
     def totalRecovered(self, up2Time):
-        integral = 0.
+        historyActive = self.historyActive
 
-        for i in range(int((up2Time - self.tStart)/self.dt)):
-            integral += self.evolveActive(self.tStart + i*self.dt, self.parValues)[1]
+        for i in range(int(round((up2Time - self.tStart)/self.dt,1))):
+            historyActive += self.evolveActive(self.tStart + i*self.dt, self.parValues)[1]
 
-        return self.recovered + integral * self.parValues[2] * self.dt
+        return historyActive * self.parValues[2] * self.dt
 
     def eval(self, time):
         return self.evolveActive(time, self.parValues)[1]
@@ -145,7 +147,7 @@ class evolution(object):
     def getGraphN(self):
         myGraph = TGraph()
 
-        for i in range(int((self.tStop - self.tStart)/self.dt)):
+        for i in range(int(round((self.tStop - self.tStart)/self.dt,1))):
             myGraph.SetPoint(myGraph.GetN(), self.tStart + i*self.dt, self.evolveActive(self.tStart + i*self.dt, self.parValues)[1])
 
         myGraph.SetLineColor(2)
@@ -160,8 +162,8 @@ class evolution(object):
     def getGraphR0(self):
         myGraph = TGraph()
 
-        for i in range(int((self.tStop - self.tStart)/self.dt)):
-            myGraph.SetPoint(myGraph.GetN(), self.tStart + (i-1)*self.dt, self.evolveActive(self.tStart + i*self.dt, self.parValues)[0])
+        for i in range(int(round((self.tStop - self.tStart)/self.dt,1))):
+            myGraph.SetPoint(myGraph.GetN(), self.tStart + i*self.dt, self.evolveActive(self.tStart + (i+1)*self.dt, self.parValues)[0])
 
         myGraph.SetLineColor(2)
         myGraph.SetLineWidth(3)
@@ -172,22 +174,22 @@ class evolution(object):
 
         return myGraph
 
-    def combineEvolutions(self, parList, timeList, deathFraction, totalPopulation):
+    def combineEvolutions(self, parList, timeList, deathFraction):
         myGraphN  = self.getGraphN()
         myGraphR0 = self.getGraphR0()
 
-        recovered = self.totalRecovered(timeList[0])
-        val       = self.eval(timeList[0])
+        historyActive = self.sumHistoryActive(timeList[0])
+        active           = self.eval(timeList[0])
 
         for t,par in enumerate(parList):
-            par[0]     = val
-            evolve     = evolution(par, timeList[t], timeList[t+1], deathFraction, totalPopulation, recovered)
+            par[0] = active
+            evolve = evolution(par, timeList[t], timeList[t+1], deathFraction, historyActive)
 
-            recovered += evolve.totalRecovered(timeList[t+1])
-            val        = evolve.eval(timeList[t+1])
+            historyActive += evolve.sumHistoryActive(timeList[t+1])
+            active        = evolve.eval(timeList[t+1])
 
-            graphN     = evolve.getGraphN()
-            graphR0    = evolve.getGraphR0()
+            graphN  = evolve.getGraphN()
+            graphR0 = evolve.getGraphR0()
 
             for i in range(graphN.GetN()):
                 myGraphN.SetPoint(myGraphN.GetN(), graphN.GetX()[i], graphN.GetY()[i])
@@ -203,11 +205,11 @@ class evolution(object):
         myGraph = TGraph()
 
         normalize = 0.
-        for i in range(int(graph.GetN() + nSigma*sigma/self.dt)):
+        for i in range(int(round(graph.GetN() + nSigma*sigma/self.dt,1))):
             normalize += self.logNormal(i*self.dt, mean, sigma)
         normalize *= self.dt
 
-        for i in range(int(graph.GetN() + nSigma*sigma/self.dt)):
+        for i in range(int(round(graph.GetN() + nSigma*sigma/self.dt,1))):
             convolve = 0.
             for j in range(graph.GetN()):
                 convolve += graph.GetY()[j] * self.logNormal(graph.GetX()[0] + i*self.dt - graph.GetX()[j], mean, sigma)
