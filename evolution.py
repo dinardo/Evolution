@@ -9,62 +9,78 @@ from math  import sqrt, log, exp, pi
 from ROOT  import TMinuit, Long, Double, TString, TPaveText, TGraph, TF1
 
 class evolution(object):
-    def __init__(self, parValues, tStart, tStop, deathFraction, historyActive = 0.):
-        self.parNames      = ['Initial population', 'Growth rate', 'Recovery rate', 'Symptomatic fraction', 'Carrying capacity']
-        self.parValues     = parValues
-        self.tStart        = tStart
-        self.tStop         = tStop
-        self.deathFraction = deathFraction
-        self.historyActive = historyActive
-        self.dt            = 0.2 # [Day]
+    def __init__(self, parValues, tStart, tStop, deathFraction, totalPopulation,
+                 symptomaticFraction     = 0.3,
+                 transmissionProbability = 0.04,
+                 initialCarryigCapacity  = 0.,
+                 historyActive           = 0.):
+
+        self.parNames  = ['Initial population', 'Growth rate', 'Recovery rate', 'CarryingCap. rate']
+        self.parValues = parValues
+
+        self.tStart = tStart
+        self.tStop  = tStop
+
+        ####################
+        # Model parameters #
+        ####################
+        self.deathFraction           = deathFraction
+        self.totalPopulation         = totalPopulation
+        self.symptomaticFraction     = symptomaticFraction
+        self.transmissionProbability = transmissionProbability
+        self.initialCarryigCapacity  = initialCarryigCapacity
+        self.historyActive           = historyActive
+
+        self.dt = 0.2 # [Day]
 
         self.nMeas, self.chi2, self.dof = 0., 0., 0.
 
         self.fitFun = TF1('Evolution', self.evolveActiveWrapper, tStart, tStop, len(self.parNames))
 
     def evolveActiveWrapper(self, t, par):
-        return self.evolveActive(t[0],par)[1]
+        return self.evolveActive(t[0],par)[2]
 
     def evolveActive(self, t, par):
-        N             = par[0] / par[3]
-        T             = t - self.tStart
-        C             = par[4]
-        r             = 0.
-        historyActive = self.historyActive / par[3]
-        deathFraction = self.deathFraction * par[3]
+        N = par[0] / self.symptomaticFraction
+        T = t - self.tStart
+        r = 0.
+
+        historyActive = self.historyActive / self.symptomaticFraction
+        deathFraction = self.deathFraction * self.symptomaticFraction
+        totalInfected = N + historyActive * par[2] * self.dt
+        C             = par[3]
+#        C             = (self.dt * totalInfected * par[3] / self.transmissionProbability) if self.initialCarryigCapacity == 0 else self.initialCarryigCapacity
 
         for n in range(int(round(T/self.dt,1))):
             Nn = N
             totalInfected = N + historyActive * par[2] * self.dt
             r = par[1] * (1. - deathFraction * totalInfected / C) * (1. - totalInfected / C)
-            N += self.dt * (N * r - par[3] * N * par[2] - (1. - par[3]) * N * par[2])
+            N += self.dt * (N * r - N * par[2])
+#            C += self.dt * par[3] * N * (1. - C / self.totalPopulation)
             historyActive += Nn
 
-        return [(r/par[2]) if par[2] != 0. else 0., N * par[3]]
+        return [(r/par[2]) if par[2] != 0. else 0., C, N * self.symptomaticFraction]
 
     def sumHistoryActive(self, up2Time):
         return self.totalRecovered(up2Time) / (self.parValues[2] * self.dt)
 
     def totalInfected(self, up2Time):
-        return self.evolveActive(up2Time, self.parValues)[1] + self.totalRecovered(up2Time)
+        return self.evolveActive(up2Time, self.parValues)[2] + self.totalRecovered(up2Time)
 
     def totalRecovered(self, up2Time):
         historyActive = self.historyActive
 
         for i in range(int(round((up2Time - self.tStart)/self.dt,1))):
-            historyActive += self.evolveActive(self.tStart + i*self.dt, self.parValues)[1]
+            historyActive += self.evolveActive(self.tStart + i*self.dt, self.parValues)[2]
 
         return historyActive * self.parValues[2] * self.dt
-
-    def eval(self, time):
-        return self.evolveActive(time, self.parValues)[1]
 
     def myChi2(self, npar, grad, fval, par, iflag):
         self.nMeas, self.chi2, delta = 0., 0., 0.
 
         for i,erry in enumerate(self.erryValues):
             if erry != 0:
-                delta = (self.yValues[i] - self.evolveActive(self.xValues[i], par)[1]) / erry
+                delta = (self.yValues[i] - self.evolveActive(self.xValues[i], par)[2]) / erry
                 self.chi2 += delta * delta
                 self.nMeas += 1
 
@@ -148,7 +164,7 @@ class evolution(object):
         myGraph = TGraph()
 
         for i in range(int(round((self.tStop - self.tStart)/self.dt,1))):
-            myGraph.SetPoint(myGraph.GetN(), self.tStart + i*self.dt, self.evolveActive(self.tStart + i*self.dt, self.parValues)[1])
+            myGraph.SetPoint(myGraph.GetN(), self.tStart + i*self.dt, self.evolveActive(self.tStart + i*self.dt, self.parValues)[2])
 
         myGraph.SetLineColor(2)
         myGraph.SetLineWidth(3)
@@ -174,19 +190,19 @@ class evolution(object):
 
         return myGraph
 
-    def combineEvolutions(self, parList, timeList, deathFraction):
+    def combineEvolutions(self, parList, timeList, deathFraction, totalPopulation, symptomaticFraction, transmissionProbability):
         myGraphN  = self.getGraphN()
         myGraphR0 = self.getGraphR0()
 
         historyActive = self.sumHistoryActive(timeList[0])
-        active           = self.eval(timeList[0])
+        [a,CC,active] = self.evolveActive(timeList[0], self.parValues)
 
         for t,par in enumerate(parList):
             par[0] = active
-            evolve = evolution(par, timeList[t], timeList[t+1], deathFraction, historyActive)
+            evolve = evolution(par, timeList[t], timeList[t+1], deathFraction, totalPopulation, symptomaticFraction, transmissionProbability, CC, historyActive)
 
             historyActive += evolve.sumHistoryActive(timeList[t+1])
-            active        = evolve.eval(timeList[t+1])
+            [a,CC,active] = evolve.evolveActive(timeList[t+1], evolve.parValues)
 
             graphN  = evolve.getGraphN()
             graphR0 = evolve.getGraphR0()
