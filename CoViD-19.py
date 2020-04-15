@@ -148,9 +148,9 @@ parList = [[000, 0.297, 0.023, 0.463],
            [000, 0.123, 0.023, 0.0078]]
 
 evolve = evolution([200, 0.452, 0.023, 0.589], 0, timeList[0], deathFraction, totalPopulation, symptomaticFraction, transmissionProbability)
-graphN, graphR0 = evolve.combineEvolutions(parList, timeList, deathFraction, totalPopulation, symptomaticFraction, transmissionProbability)
-#graphN  = evolve.smearing(graphN)
-#graphR0 = evolve.smearing(graphR0)
+graphN = evolve.combineEvolutions(parList, timeList, deathFraction, totalPopulation, symptomaticFraction, transmissionProbability)
+graphN = evolve.smearing(graphN)
+graphR0 = evolve.getGraphR0(graphN)
 graphN.SetLineColor(4)
 myCanvModels.cd(1)
 graphN.Draw('L same')
@@ -223,8 +223,8 @@ for i,k in enumerate(sorted(active.keys())):
         historyActive += active[k]
 evActive = evolution([active[sorted(active.keys())[int(tStart)]], 0.13, 0.023, 5e5], tStart, tStop, deathFraction, totalPopulation, symptomaticFraction, transmissionProbability, 0., historyActive)
 evActive.runOptimization(xValues, yValues, erryValues, [2])
-evActiveGraph = evActive.getGraphN()
-evActiveGraph.Draw('PL same')
+evActiveGraphN = evActive.getGraphN()
+evActiveGraphN.Draw('PL same')
 statActive = evActive.addStats()
 
 nowA = TLine(len(active)-1, 0, len(active)-1, evActive.fitFun.GetMaximum())
@@ -243,7 +243,7 @@ myCanvActive.Update()
 
 myCanvActiveR0 = TCanvas('myCanvActiveR0','R0')
 
-evActiveGraphR0 = evActive.getGraphR0()
+evActiveGraphR0 = evActive.getGraphR0(evActiveGraphN)
 evActiveGraphR0.Draw('APL')
 evActiveGraphR0.GetHistogram().GetXaxis().SetTitle('Time (days)')
 evActiveGraphR0.GetHistogram().GetYaxis().SetTitle('R_{0}')
@@ -398,8 +398,8 @@ for i,k in enumerate(sorted(active.keys())):
 evActive02 = evolution([active[sorted(active.keys())[int(tStart)]], 0.3, 0.031, 0.03], tStart, tStop, 0.04, totalPopulation, symptomaticFraction, transmissionProbability, 0., historyActive)
 evActive02.runOptimization(xValues, yValues, erryValues, [2])
 
-evActiveGraph02 = evActive02.getGraphN()
-evActiveGraph02.Draw('PL same')
+evActiveGraph02N = evActive02.getGraphN()
+evActiveGraph02N.Draw('PL same')
 stat02 = evActive02.addStats()
 
 myCanv02.SetGrid()
@@ -408,7 +408,7 @@ myCanv02.Update()
 
 myCanv02R0 = TCanvas('myCanv02R0','R0 ' + country)
 
-evActiveGraph02R0 = evActive02.getGraphR0()
+evActiveGraph02R0 = evActive02.getGraphR0(evActiveGraph02N)
 evActiveGraph02R0.Draw('APL')
 evActiveGraph02R0.GetHistogram().GetXaxis().SetTitle('Time (days)')
 evActiveGraph02R0.GetHistogram().GetYaxis().SetTitle('R_{0}')

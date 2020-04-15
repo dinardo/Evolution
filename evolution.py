@@ -38,7 +38,7 @@ class evolution(object):
         self.fitFun = TF1('Evolution', self.evolveActiveWrapper, tStart, tStop, len(self.parNames))
 
     def evolveActiveWrapper(self, t, par):
-        return self.evolveActive(t[0],par)[2]
+        return self.evolveActive(t[0],par)[0]
 
     def evolveActive(self, t, par):
         N = par[0] / self.symptomaticFraction
@@ -59,19 +59,19 @@ class evolution(object):
 #            C += self.dt * par[3] * N * (1. - C / self.totalPopulation)
             historyActive += Nn
 
-        return [(r/par[2]) if par[2] != 0. else 0., C, N * self.symptomaticFraction]
+        return [N * self.symptomaticFraction, C]
 
     def sumHistoryActive(self, up2Time):
         return self.totalRecovered(up2Time) / (self.parValues[2] * self.dt)
 
     def totalInfected(self, up2Time):
-        return self.evolveActive(up2Time, self.parValues)[2] + self.totalRecovered(up2Time)
+        return self.evolveActive(up2Time, self.parValues)[0] + self.totalRecovered(up2Time)
 
     def totalRecovered(self, up2Time):
         historyActive = self.historyActive
 
         for i in range(int(round((up2Time - self.tStart)/self.dt,1))):
-            historyActive += self.evolveActive(self.tStart + i*self.dt, self.parValues)[2]
+            historyActive += self.evolveActive(self.tStart + i*self.dt, self.parValues)[0]
 
         return historyActive * self.parValues[2] * self.dt
 
@@ -80,7 +80,7 @@ class evolution(object):
 
         for i,erry in enumerate(self.erryValues):
             if erry != 0:
-                delta = (self.yValues[i] - self.evolveActive(self.xValues[i], par)[2]) / erry
+                delta = (self.yValues[i] - self.evolveActive(self.xValues[i], par)[0]) / erry
                 self.chi2 += delta * delta
                 self.nMeas += 1
 
@@ -161,38 +161,37 @@ class evolution(object):
         return pt
 
     def getGraphN(self):
-        myGraph = TGraph()
+        graphN = TGraph()
 
         for i in range(int(round((self.tStop - self.tStart)/self.dt,1))):
-            myGraph.SetPoint(myGraph.GetN(), self.tStart + i*self.dt, self.evolveActive(self.tStart + i*self.dt, self.parValues)[2])
+            graphN.SetPoint(graphN.GetN(), self.tStart + i*self.dt, self.evolveActive(self.tStart + i*self.dt, self.parValues)[0])
 
-        myGraph.SetLineColor(2)
-        myGraph.SetLineWidth(3)
+        graphN.SetLineColor(2)
+        graphN.SetLineWidth(3)
 
-        myGraph.SetMarkerColor(2)
-        myGraph.SetMarkerSize(1.3)
-        myGraph.SetMarkerStyle(29)
+        graphN.SetMarkerColor(2)
+        graphN.SetMarkerSize(1.3)
+        graphN.SetMarkerStyle(29)
 
-        return myGraph
+        return graphN
 
-    def getGraphR0(self):
-        myGraph = TGraph()
+    def getGraphR0(self, graphN):
+        graphR0 = TGraph()
 
-        for i in range(int(round((self.tStop - self.tStart)/self.dt,1))):
-            myGraph.SetPoint(myGraph.GetN(), self.tStart + i*self.dt, self.evolveActive(self.tStart + (i+1)*self.dt, self.parValues)[0])
+        for i in range(graphN.GetN() - 1):
+            graphR0.SetPoint(graphR0.GetN(), graphN.GetX()[i], (graphN.GetY()[i+1] - graphN.GetY()[i]) / self.dt / (graphN.GetY()[i]*self.parValues[2]) + 1)
 
-        myGraph.SetLineColor(2)
-        myGraph.SetLineWidth(3)
+        graphR0.SetLineColor(2)
+        graphR0.SetLineWidth(3)
 
-        myGraph.SetMarkerColor(2)
-        myGraph.SetMarkerSize(1.3)
-        myGraph.SetMarkerStyle(29)
+        graphR0.SetMarkerColor(2)
+        graphR0.SetMarkerSize(1.3)
+        graphR0.SetMarkerStyle(29)
 
-        return myGraph
+        return graphR0
 
     def combineEvolutions(self, parList, timeList, deathFraction, totalPopulation, symptomaticFraction, transmissionProbability):
         myGraphN  = self.getGraphN()
-        myGraphR0 = self.getGraphR0()
 
         historyActive = self.sumHistoryActive(timeList[0])
         [a,CC,active] = self.evolveActive(timeList[0], self.parValues)
@@ -202,18 +201,14 @@ class evolution(object):
             evolve = evolution(par, timeList[t], timeList[t+1], deathFraction, totalPopulation, symptomaticFraction, transmissionProbability, CC, historyActive)
 
             historyActive += evolve.sumHistoryActive(timeList[t+1])
-            [a,CC,active] = evolve.evolveActive(timeList[t+1], evolve.parValues)
+            [active, CC] = evolve.evolveActive(timeList[t+1], evolve.parValues)
 
-            graphN  = evolve.getGraphN()
-            graphR0 = evolve.getGraphR0()
+            graphN = evolve.getGraphN()
 
             for i in range(graphN.GetN()):
                 myGraphN.SetPoint(myGraphN.GetN(), graphN.GetX()[i], graphN.GetY()[i])
 
-            for i in range(graphR0.GetN()):
-                myGraphR0.SetPoint(myGraphR0.GetN(), graphR0.GetX()[i], graphR0.GetY()[i])
-
-        return myGraphN, myGraphR0
+        return myGraphN
 
     def smearing(self, graph, sigma = 2.):
         mean    =   0.
