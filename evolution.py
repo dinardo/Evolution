@@ -9,11 +9,11 @@ from math  import sqrt, log, exp, pi
 from ROOT  import TMinuit, Long, Double, TString, TPaveText, TGraph, TF1
 
 class evolution(object):
-    def __init__(self, parValues, tStart, tStop, deathFraction, totalPopulation,
+    def __init__(self, parValues, tStart, tStop, totalPopulation,
                  symptomaticFraction     = 0.3,
                  transmissionProbability = 0.04,
-                 initialCarryigCapacity  = 0.,
-                 historyActive           = 0.):
+                 historyActiveDt         = 0.,
+                 carryingCapacity        = 0.):
 
         self.parNames  = ['Initial population', 'Growth rate', 'Recovery rate', 'CarryingCap. rate']
         self.parValues = parValues
@@ -24,12 +24,11 @@ class evolution(object):
         ####################
         # Model parameters #
         ####################
-        self.deathFraction           = deathFraction
         self.totalPopulation         = totalPopulation
         self.symptomaticFraction     = symptomaticFraction
         self.transmissionProbability = transmissionProbability
-        self.initialCarryigCapacity  = initialCarryigCapacity
-        self.historyActive           = historyActive
+        self.historyActiveDt         = historyActiveDt
+        self.carryingCapacity        = carryingCapacity
 
         self.dt = 0.2 # [Day]
 
@@ -44,36 +43,37 @@ class evolution(object):
         N = par[0] / self.symptomaticFraction
         T = t - self.tStart
         r = 0.
+        Cn = 0.
+        historyActiveDt = 0.
 
-        historyActive = self.historyActive / self.symptomaticFraction
-        deathFraction = self.deathFraction * self.symptomaticFraction
-        totalInfected = N + historyActive * par[2] * self.dt
-        C             = par[3]
-#        C             = (self.dt * totalInfected * par[3] / self.transmissionProbability) if self.initialCarryigCapacity == 0 else self.initialCarryigCapacity
+        totalInfected = N + self.historyActiveDt / self.symptomaticFraction * par[2]
+        C             = (totalInfected * par[1] / self.transmissionProbability) if self.carryingCapacity == 0. else self.carryingCapacity
+#        C             = (self.dt * totalInfected * par[1] / self.transmissionProbability) if self.carryingCapacity == 0. else self.carryingCapacity
 
         for n in range(int(round(T/self.dt,1))):
             Nn = N
-            totalInfected = N + historyActive * par[2] * self.dt
-            r = par[1] * (1. - deathFraction * totalInfected / C) * (1. - totalInfected / C)
-            N += self.dt * (N * r - N * par[2])
-#            C += self.dt * par[3] * N * (1. - C / self.totalPopulation)
-            historyActive += Nn
+            totalInfected = N + (self.historyActiveDt / self.symptomaticFraction + historyActiveDt) * par[2]
+            r = par[1] * (1. - totalInfected / C)
+            N += self.dt * N * (r - par[2])
+            Cn = C
+            C += self.dt * par[3] * N * (1. - C / self.totalPopulation)
+            historyActiveDt += Nn * self.dt
 
-        return [N * self.symptomaticFraction, C]
+        return [N * self.symptomaticFraction, (totalInfected / Cn) if Cn != 0. else 0., C]
 
     def sumHistoryActive(self, up2Time):
-        return self.totalRecovered(up2Time) / (self.parValues[2] * self.dt)
+        return self.totalRecovered(up2Time) / self.parValues[2]
 
     def totalInfected(self, up2Time):
         return self.evolveActive(up2Time, self.parValues)[0] + self.totalRecovered(up2Time)
 
     def totalRecovered(self, up2Time):
-        historyActive = self.historyActive
+        historyActiveDt = self.historyActiveDt
 
         for i in range(int(round((up2Time - self.tStart)/self.dt,1))):
-            historyActive += self.evolveActive(self.tStart + i*self.dt, self.parValues)[0]
+            historyActiveDt += self.evolveActive(self.tStart + i*self.dt, self.parValues)[0] * self.dt
 
-        return historyActive * self.parValues[2] * self.dt
+        return historyActiveDt * self.parValues[2]
 
     def myChi2(self, npar, grad, fval, par, iflag):
         self.nMeas, self.chi2, delta = 0., 0., 0.
@@ -175,6 +175,21 @@ class evolution(object):
 
         return graphN
 
+    def getGraphPinfect(self):
+        graphP = TGraph()
+
+        for i in range(1,int(round((self.tStop - self.tStart)/self.dt,1))):
+            graphP.SetPoint(graphP.GetN(), self.tStart + i*self.dt, self.evolveActive(self.tStart + i*self.dt, self.parValues)[1])
+
+        graphP.SetLineColor(2)
+        graphP.SetLineWidth(3)
+
+        graphP.SetMarkerColor(2)
+        graphP.SetMarkerSize(1.3)
+        graphP.SetMarkerStyle(29)
+
+        return graphP
+
     def getGraphR0(self, graphN):
         graphR0 = TGraph()
 
@@ -190,18 +205,18 @@ class evolution(object):
 
         return graphR0
 
-    def combineEvolutions(self, parList, timeList, deathFraction, totalPopulation, symptomaticFraction, transmissionProbability):
+    def combineEvolutions(self, parList, timeList, totalPopulation, symptomaticFraction, transmissionProbability):
         myGraphN  = self.getGraphN()
 
         historyActive = self.sumHistoryActive(timeList[0])
-        [a,CC,active] = self.evolveActive(timeList[0], self.parValues)
+        [active, Pinf, CC] = self.evolveActive(timeList[0], self.parValues)
 
         for t,par in enumerate(parList):
             par[0] = active
-            evolve = evolution(par, timeList[t], timeList[t+1], deathFraction, totalPopulation, symptomaticFraction, transmissionProbability, CC, historyActive)
+            evolve = evolution(par, timeList[t], timeList[t+1], totalPopulation, symptomaticFraction, transmissionProbability, historyActive, CC)
 
             historyActive += evolve.sumHistoryActive(timeList[t+1])
-            [active, CC] = evolve.evolveActive(timeList[t+1], evolve.parValues)
+            [active, Pinf, CC] = evolve.evolveActive(timeList[t+1], evolve.parValues)
 
             graphN = evolve.getGraphN()
 

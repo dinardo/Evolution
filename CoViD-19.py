@@ -85,12 +85,11 @@ SetStyle()
 scaleError = 3
 farFromMax = 0.95
 
-deathFraction           = 0.11
 totalPopulation         = 60e6
 symptomaticFraction     = 0.3
 transmissionProbability = 0.04
 
-tStart   =   29 # [Day]
+tStart   =   27 # [Day]
 tStop    =  100 # [Day]
 country  = 'China'
 province = 'Hubei'
@@ -110,7 +109,7 @@ recovered = readDataFromFile(fileName,  9)
 deaths    = readDataFromFile(fileName, 10)
 total     = readDataFromFile(fileName, 11)
 
-"""
+
 ##########
 # Models #
 ##########
@@ -119,9 +118,8 @@ myCanvModels.Divide(1,2)
 myGraphTmp1 = TGraph()
 myGraphTmp2 = TGraph()
 
-t0 = 8
-timeList = [t0, t0+10, t0+10+9, t0+10+9+60, t0+10+9+60+20, t0+10+9+60+20+30, t0+10+9+60+20+30+20, 1000]
-#timeList = [t0, t0+10, t0+10+9, t0+10+9+20, t0+10+9+20+20, t0+10+9+20+20+30, t0+10+9+20+20+30+20, 1000]
+t0 = 27
+timeList = [t0+40, t0+40+30, t0+40+30+30, t0+40+30+30+60, 1000]
 
 myCanvModels.cd(1)
 myGraphTmp1.SetPoint(myGraphTmp1.GetN(), 0, 0)
@@ -139,17 +137,14 @@ myGraphTmp2.Draw()
 myGraphTmp2.GetXaxis().SetTitle('Time (days)')
 myGraphTmp2.GetYaxis().SetTitle('R_{0}')
 
-parList = [[000, 0.297, 0.023, 0.463],
-           [000, 0.214, 0.023, 0.176],
-           [000, 0.123, 0.023, 0.0078],
-           [000, 0.452, 0.023, 0.589],
-           [000, 0.123, 0.023, 0.0078],
-           [000, 0.452, 0.023, 0.589],
-           [000, 0.123, 0.023, 0.0078]]
+parList = [[000, 0.481, 0.023, 0.281],
+           [000, 0.129, 0.023, 0.0124],
+           [000, 0.481, 0.023, 0.281],
+           [000, 0.129, 0.023, 0.0124]]
 
-evolve = evolution([200, 0.452, 0.023, 0.589], 0, timeList[0], deathFraction, totalPopulation, symptomaticFraction, transmissionProbability)
-graphN = evolve.combineEvolutions(parList, timeList, deathFraction, totalPopulation, symptomaticFraction, transmissionProbability)
-graphN = evolve.smearing(graphN)
+evolve = evolution([48300, 0.129, 0.023, 0.0124], t0, timeList[0], totalPopulation, symptomaticFraction, transmissionProbability, 315228., 598285.)
+graphN = evolve.combineEvolutions(parList, timeList, totalPopulation, symptomaticFraction, transmissionProbability)
+#graphN = evolve.smearing(graphN)
 graphR0 = evolve.getGraphR0(graphN)
 graphN.SetLineColor(4)
 myCanvModels.cd(1)
@@ -157,16 +152,16 @@ graphN.Draw('L same')
 myCanvModels.cd(2)
 graphR0.Draw('L same')
 
-#evolve1 = evolution([100, 0.123, 0.023, 0.0078], 0, 1000, 0.11, 60e6, 0.3, 0.04)
+#evolve1 = evolution([100, 0.121, 0.023, 0.0082], 0, 1000, 60e6, 0.3, 0.04)
 #graph1 = evolve1.getGraphN()
 #graph1.Draw('L same')
 #
-#evolve2 = evolution([100, 0.123, 0.023, 0.0078], 0, 1000, 0.11, 60e6, 0.3, 0.04)
+#evolve2 = evolution([100, 0.121, 0.023, 0.0082], 0, 1000, 60e6, 0.3, 0.04)
 #graph2 = evolve2.getGraphN()
 #graph2.SetLineColor(4)
 #graph2.Draw('L same')
 #
-#evolve3 = evolution([100, 0.123, 0.023, 0.0078], 0, 1000, 0.11, 60e6, 0.3, 0.04)
+#evolve3 = evolution([100, 0.121, 0.023, 0.0082], 0, 1000, 60e6, 0.3, 0.04)
 #graph3 = evolve3.getGraphN()
 #graph3.SetLineColor(1)
 #graph3.Draw('L same')
@@ -174,7 +169,7 @@ graphR0.Draw('L same')
 myCanvModels.SetGrid()
 myCanvModels.Modified()
 myCanvModels.Update()
-"""
+
 
 ###############
 # Total cases #
@@ -212,20 +207,25 @@ myGraphActive.Draw('APE1')
 myGraphActive.GetHistogram().GetXaxis().SetTitle('Time (days)')
 myGraphActive.GetHistogram().GetYaxis().SetTitle('Active cases affected by CoViD-19')
 
-#graphN.Draw('L same')
+graphN.Draw('L same')
 
 xValues    = [i                            for i in range(len(active.keys()))          if i >= tStart and i <= tStop]
 yValues    = [active[k]                    for i,k in enumerate(sorted(active.keys())) if i >= tStart and i <= tStop]
 erryValues = [sqrt(active[k]) * scaleError for i,k in enumerate(sorted(active.keys())) if i >= tStart and i <= tStop]
+
 historyActive = 0.
 for i,k in enumerate(sorted(active.keys())):
     if i < tStart:
         historyActive += active[k]
-evActive = evolution([active[sorted(active.keys())[int(tStart)]], 0.13, 0.023, 5e5], tStart, tStop, deathFraction, totalPopulation, symptomaticFraction, transmissionProbability, 0., historyActive)
+print 'History active cases:', historyActive
+
+evActive = evolution([active[sorted(active.keys())[int(tStart)]], 0.3, 0.023, 0.05], tStart, tStop, totalPopulation, symptomaticFraction, transmissionProbability, historyActive, 0.)
 evActive.runOptimization(xValues, yValues, erryValues, [2])
 evActiveGraphN = evActive.getGraphN()
 evActiveGraphN.Draw('PL same')
 statActive = evActive.addStats()
+
+print 'Carrying capacity:', evActive.evolveActive(tStop, evActive.parValues)[2]
 
 nowA = TLine(len(active)-1, 0, len(active)-1, evActive.fitFun.GetMaximum())
 nowA.SetLineColor(4)
@@ -251,6 +251,17 @@ evActiveGraphR0.GetHistogram().GetYaxis().SetTitle('R_{0}')
 myCanvActiveR0.SetGrid()
 myCanvActiveR0.Modified()
 myCanvActiveR0.Update()
+
+myCanvActiveP = TCanvas('myCanvActiveP','Probability infected')
+
+evActiveGraphP = evActive.getGraphPinfect()
+evActiveGraphP.Draw('APL')
+evActiveGraphP.GetHistogram().GetXaxis().SetTitle('Time (days)')
+evActiveGraphP.GetHistogram().GetYaxis().SetTitle('Probability')
+
+myCanvActiveP.SetGrid()
+myCanvActiveP.Modified()
+myCanvActiveP.Update()
 
 
 #################
@@ -391,12 +402,17 @@ myGraph02.GetHistogram().GetYaxis().SetTitle('Active cases')
 xValues    = [i                            for i in range(len(active.keys()))          if i >= tStart and i <= tStop]
 yValues    = [active[k]                    for i,k in enumerate(sorted(active.keys())) if i >= tStart and i <= tStop]
 erryValues = [sqrt(active[k]) * scaleError for i,k in enumerate(sorted(active.keys())) if i >= tStart and i <= tStop]
+
 historyActive = 0.
 for i,k in enumerate(sorted(active.keys())):
     if i < tStart:
         historyActive += active[k]
-evActive02 = evolution([active[sorted(active.keys())[int(tStart)]], 0.3, 0.031, 0.03], tStart, tStop, 0.04, totalPopulation, symptomaticFraction, transmissionProbability, 0., historyActive)
+print 'History active cases:', historyActive
+
+evActive02 = evolution([active[sorted(active.keys())[int(tStart)]], 0.2, 0.031, 0.01], tStart, tStop, totalPopulation, symptomaticFraction, transmissionProbability, historyActive, 0.)
 evActive02.runOptimization(xValues, yValues, erryValues, [2])
+
+print 'Carrying capacity:', evActive02.evolveActive(tStop, evActive02.parValues)[2]
 
 evActiveGraph02N = evActive02.getGraphN()
 evActiveGraph02N.Draw('PL same')
@@ -416,6 +432,17 @@ evActiveGraph02R0.GetHistogram().GetYaxis().SetTitle('R_{0}')
 myCanv02R0.SetGrid()
 myCanv02R0.Modified()
 myCanv02R0.Update()
+
+myCanv02P = TCanvas('myCanv02P','Probability infected ' + country)
+
+evActiveGraph02P = evActive02.getGraphPinfect()
+evActiveGraph02P.Draw('APL')
+evActiveGraph02P.GetHistogram().GetXaxis().SetTitle('Time (days)')
+evActiveGraph02P.GetHistogram().GetYaxis().SetTitle('Probability')
+
+myCanv02P.SetGrid()
+myCanv02P.Modified()
+myCanv02P.Update()
 
 
 ##########
