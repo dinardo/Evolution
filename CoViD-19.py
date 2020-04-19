@@ -87,7 +87,7 @@ farFromMax = 0.95
 
 totalPopulation         = 60e6
 symptomaticFraction     = 0.3
-transmissionProbability = 0.04
+transmissionProbability = 0.3
 
 tStart   =   27 # [Day]
 tStop    =  100 # [Day]
@@ -118,8 +118,7 @@ myCanvModels.Divide(1,2)
 myGraphTmp1 = TGraph()
 myGraphTmp2 = TGraph()
 
-t0 = 27
-timeList = [t0+40, t0+40+30, t0+40+30+30, t0+40+30+30+60, 1000]
+timeList = [9, 9+6, 9+6+11, 9+6+11+37, 9+6+11+37+60, 9+6+11+37+60+30, 9+6+11+37+60+30+60, 1000]
 
 myCanvModels.cd(1)
 myGraphTmp1.SetPoint(myGraphTmp1.GetN(), 0, 0)
@@ -137,14 +136,17 @@ myGraphTmp2.Draw()
 myGraphTmp2.GetXaxis().SetTitle('Time (days)')
 myGraphTmp2.GetYaxis().SetTitle('R_{0}')
 
-parList = [[000, 0.481, 0.023, 0.281],
-           [000, 0.129, 0.023, 0.0124],
-           [000, 0.481, 0.023, 0.281],
-           [000, 0.129, 0.023, 0.0124]]
+parList = [[000, 0.329, 0.023,  61200],
+           [000, 0.211, 0.023, 369000],
+           [000, 0.130, 0.023, 593000],
+           [000, 0.429, 0.023, 0],
+           [000, 0.130, 0.023, 0],
+           [000, 0.429, 0.023, 0],
+           [000, 0.130, 0.023, 0]]
 
-evolve = evolution([48300, 0.129, 0.023, 0.0124], t0, timeList[0], totalPopulation, symptomaticFraction, transmissionProbability, 315228., 598285.)
+evolve = evolution([204, 0.429, 0.023, 13500], 0, timeList[0], totalPopulation, symptomaticFraction, transmissionProbability)
 graphN = evolve.combineEvolutions(parList, timeList, totalPopulation, symptomaticFraction, transmissionProbability)
-#graphN = evolve.smearing(graphN)
+graphN = evolve.smearing(graphN)
 graphR0 = evolve.getGraphR0(graphN)
 graphN.SetLineColor(4)
 myCanvModels.cd(1)
@@ -152,16 +154,16 @@ graphN.Draw('L same')
 myCanvModels.cd(2)
 graphR0.Draw('L same')
 
-#evolve1 = evolution([100, 0.121, 0.023, 0.0082], 0, 1000, 60e6, 0.3, 0.04)
+#evolve1 = evolution([100, 0.13, 0.023, 6e5], 0, 1000, 60e6, 0.3, 0.3)
 #graph1 = evolve1.getGraphN()
 #graph1.Draw('L same')
 #
-#evolve2 = evolution([100, 0.121, 0.023, 0.0082], 0, 1000, 60e6, 0.3, 0.04)
+#evolve2 = evolution([100, 0.13, 0.023, 6e5], 0, 1000, 60e6, 0.3, 0.3)
 #graph2 = evolve2.getGraphN()
 #graph2.SetLineColor(4)
 #graph2.Draw('L same')
 #
-#evolve3 = evolution([100, 0.121, 0.023, 0.0082], 0, 1000, 60e6, 0.3, 0.04)
+#evolve3 = evolution([100, 0.13, 0.023, 6e5], 0, 1000, 60e6, 0.3, 0.3)
 #graph3 = evolve3.getGraphN()
 #graph3.SetLineColor(1)
 #graph3.Draw('L same')
@@ -219,13 +221,13 @@ for i,k in enumerate(sorted(active.keys())):
         historyActive += active[k]
 print 'History active cases:', historyActive
 
-evActive = evolution([active[sorted(active.keys())[int(tStart)]], 0.3, 0.023, 0.05], tStart, tStop, totalPopulation, symptomaticFraction, transmissionProbability, historyActive, 0.)
+evActive = evolution([active[sorted(active.keys())[int(tStart)]], 0.13, 0.023, 4e5], tStart, tStop, totalPopulation, symptomaticFraction, transmissionProbability, historyActive)
 evActive.runOptimization(xValues, yValues, erryValues, [2])
 evActiveGraphN = evActive.getGraphN()
 evActiveGraphN.Draw('PL same')
 statActive = evActive.addStats()
 
-print 'Carrying capacity:', evActive.evolveActive(tStop, evActive.parValues)[2]
+print '==> Active cases, p-infected, Carrying capacity:', evActive.evolveActive(tStop, evActive.parValues)
 
 nowA = TLine(len(active)-1, 0, len(active)-1, evActive.fitFun.GetMaximum())
 nowA.SetLineColor(4)
@@ -330,8 +332,8 @@ myCanvRatio02.Modified()
 myCanvRatio02.Update()
 
 
-print 'Rth:', round(evActive.parValues[1] / evActive.parValues[2],1)
-print 'Doubling time:', round(log(2)/evActive.parValues[1],1), 'days'
+print '==> Rth:', round(evActive.parValues[1] / evActive.parValues[2],1)
+print '==> Doubling time:', round(log(2)/evActive.parValues[1],1), 'days'
 
 
 ###################
@@ -409,10 +411,10 @@ for i,k in enumerate(sorted(active.keys())):
         historyActive += active[k]
 print 'History active cases:', historyActive
 
-evActive02 = evolution([active[sorted(active.keys())[int(tStart)]], 0.2, 0.031, 0.01], tStart, tStop, totalPopulation, symptomaticFraction, transmissionProbability, historyActive, 0.)
+evActive02 = evolution([active[sorted(active.keys())[int(tStart)]], 0.2, 0.031, 5e5], tStart, tStop, totalPopulation, symptomaticFraction, transmissionProbability, historyActive)
 evActive02.runOptimization(xValues, yValues, erryValues, [2])
 
-print 'Carrying capacity:', evActive02.evolveActive(tStop, evActive02.parValues)[2]
+print '==> Carrying capacity:', evActive02.evolveActive(tStop, evActive02.parValues)[2]
 
 evActiveGraph02N = evActive02.getGraphN()
 evActiveGraph02N.Draw('PL same')
