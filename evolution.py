@@ -222,8 +222,7 @@ class evolution(object):
 
         return myGraphN
 
-    def smearing(self, graph, sigma = 2.):
-        mean    =   0.
+    def smearing(self, graph, mean = 0.8, sigma = 0.4):
         nSigma  = 100.
         myGraph = TGraph()
 
