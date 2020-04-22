@@ -6,12 +6,13 @@
 
 import csv
 from datetime import datetime
+from random   import seed, random, gauss
 from math     import sqrt, log, exp
 
 from pyWget    import saveDataFromURL
 from evolution import evolution
 
-from ROOT import gROOT, gStyle, gApplication, TGaxis, TCanvas, TGraphErrors, TGraph, TLine
+from ROOT import gROOT, gStyle, gApplication, TGaxis, TCanvas, TGraphErrors, TGraph, TH1D, TH2D, TLine
 
 
 def SetStyle():
@@ -71,12 +72,10 @@ def readDataFromFile(fileName, column, country = '', province = ''):
     return myDict
 
 
-def analyzeItaly(totalPopulation, symptomaticFraction, transmissionProbability, recoveryRate):
+def analyzeItaly(tStart, tStop, totalPopulation, symptomaticFraction, transmissionProbability, recoveryRate):
+    ntuple = [tStart, tStop, totalPopulation, symptomaticFraction, transmissionProbability, recoveryRate]
     scaleError = 3
     farFromMax = 0.95
-
-    tStart =  9 # [Day]
-    tStop  = 15 # [Day]
 
 
     ###########################
@@ -118,9 +117,10 @@ def analyzeItaly(totalPopulation, symptomaticFraction, transmissionProbability, 
     for i,k in enumerate(sorted(active.keys())):
         if i < tStart:
             historyActive += active[k]
+    ntuple.extend([historyActive, xValues, yValues, erryValues])
     print 'History active cases:', historyActive
 
-    evActive = evolution([active[sorted(active.keys())[int(tStart)]], 0.13, recoveryRate, 4e5], tStart, tStop, totalPopulation, symptomaticFraction, transmissionProbability, historyActive)
+    evActive = evolution([yValues[0], 0.13, recoveryRate, 3e5], tStart, tStop, totalPopulation, symptomaticFraction, transmissionProbability, historyActive)
     evActive.runOptimization(xValues, yValues, erryValues, [2])
     evActiveGraphN = evActive.getGraphN()
     evActiveGraphN.Draw('PL same')
@@ -254,17 +254,95 @@ def analyzeItaly(totalPopulation, symptomaticFraction, transmissionProbability, 
     print '==> Rth:', round(evActive.parValues[1] / evActive.parValues[2],1)
     print '==> Doubling time:', round(log(2)/evActive.parValues[1],1), 'days'
 
-    return [myCanvTotal, myGraphTotal,
-            myCanvActive, myGraphActive, evActiveGraphN, now, willbe, myCanvActiveR0, evActiveGraphR0, myCanvActiveP, evActiveGraphP,
-            myCanvDeaths, myGraphDeaths,
+    return [ntuple,
+            myCanvTotal,   myGraphTotal,
+            myCanvActive,  myGraphActive, evActiveGraphN, statActive, now, willbe, myCanvActiveR0, evActiveGraphR0, myCanvActiveP, evActiveGraphP,
+            myCanvDeaths,  myGraphDeaths,
             myCanvRatio01, myGraphRatio01,
             myCanvRatio02, myGraphRatio02]
 
-def analyzeWorld(country, province, totalPopulation, symptomaticFraction, transmissionProbability, recoveryRate):
-    scaleError = 3
 
-    tStart =  22 # [Day]
-    tStop  = 100 # [Day]
+def scanParameter(ntuple):
+    tStart = ntuple[0]
+    tStop  = ntuple[1]
+
+    totalPopulation         = ntuple[2]
+    symptomaticFraction     = ntuple[3]
+    transmissionProbability = ntuple[4]
+    recoveryRate            = ntuple[5]
+    historyActive           = ntuple[6]
+
+    xValues    = ntuple[7]
+    yValues    = ntuple[8]
+    erryValues = ntuple[9]
+
+    histo = TH1D("Histo", "Histo", 100, 0, 1)
+    histo.GetXaxis().SetTitle('r')
+    histo.GetYaxis().SetTitle('Entries')
+
+    scatter = TH2D("Scatter", "Scatter par-chi2", 40, 0, 1, 100, 0, 10)
+    scatter.GetYaxis().SetTitle('#chi^{2}/d.o.f.')
+
+    # 27 - 100
+#    scatterC0 = TH2D("ScatterC0", "Scatter par-C0", 40, 0, 1, 100, 4e5, 8e5)
+#    scatterCn = TH2D("ScatterCn", "Scatter par-Cn", 40, 0, 1, 100, 0.4e6, 1.6e6)
+    # 15 - 27
+#    scatterC0 = TH2D("ScatterC0", "Scatter par-C0", 40, 0, 1, 100, 0.8e5, 6e5)
+#    scatterCn = TH2D("ScatterCn", "Scatter par-Cn", 40, 0, 1, 100, 1e5, 8e5)
+    # 9 - 15
+#    scatterC0 = TH2D("ScatterC0", "Scatter par-C0", 40, 0, 1, 100, 0.8e4, 1e5)
+#    scatterCn = TH2D("ScatterCn", "Scatter par-Cn", 40, 0, 1, 100, 1e4, 3e5)
+    # 0 - 9
+    scatterC0 = TH2D("ScatterC0", "Scatter par-C0", 40, 0, 1, 100, 1e3, 8e4)
+    scatterCn = TH2D("ScatterCn", "Scatter par-Cn", 40, 0, 1, 100, 0.2e4, 1e5)
+
+    seed(1)
+    minVal = 0.01
+    maxVal = 0.99
+    N      = 1000
+
+    for i in range(N):
+        val = minVal + (random() * (maxVal - minVal))
+        transmissionProbability = val
+#        symptomaticFraction     = val
+
+        evolve = evolution([yValues[0], 0.13, recoveryRate, 4e5], tStart, tStop, totalPopulation, symptomaticFraction, transmissionProbability, historyActive)
+        status = evolve.runOptimization(xValues, yValues, erryValues, [2], -1)
+
+        if status == 3:
+            histo.Fill(evolve.parValues[1])
+            scatter.Fill(val, evolve.chi2/evolve.dof, val)
+            scatterC0.Fill(val, evolve.parValues[3])
+            scatterCn.Fill(val, evolve.evolveActive(tStop, evolve.parValues)[2])
+
+    myCanv01 = TCanvas('myCanv01','Histogram')
+    histo.Draw()
+    myCanv01.Modified()
+    myCanv01.Update()
+
+    myCanv02 = TCanvas('myCanv02','Scatter plot')
+    scatter.Draw('gcolz')
+    myCanv02.Modified()
+    myCanv02.Update()
+
+    myCanv03 = TCanvas('myCanv03','C0')
+    scatterC0.Draw('gcolz')
+    myCanv03.Modified()
+    myCanv03.Update()
+
+    myCanv04 = TCanvas('myCanv04','Cn')
+    scatterCn.Draw('gcolz')
+    myCanv04.Modified()
+    myCanv04.Update()
+
+    return [myCanv01, histo,
+            myCanv02, scatter,
+            myCanv03, scatterC0,
+            myCanv04, scatterCn]
+
+
+def analyzeWorld(country, province, tStart, tStop, totalPopulation, symptomaticFraction, transmissionProbability, recoveryRate):
+    scaleError = 3
 
     ###########################
     # Read data from database #
@@ -335,7 +413,7 @@ def analyzeWorld(country, province, totalPopulation, symptomaticFraction, transm
             historyActive += active[k]
     print 'History active cases:', historyActive
 
-    evActive02 = evolution([active[sorted(active.keys())[int(tStart)]], 0.2, recoveryRate, 5e5], tStart, tStop, totalPopulation, symptomaticFraction, transmissionProbability, historyActive)
+    evActive02 = evolution([yValues[0], 0.2, recoveryRate, 5e5], tStart, tStop, totalPopulation, symptomaticFraction, transmissionProbability, historyActive)
     evActive02.runOptimization(xValues, yValues, erryValues, [2])
 
     print '==> Carrying capacity:', evActive02.evolveActive(tStop, evActive02.parValues)[2]
@@ -509,8 +587,9 @@ def runModel(totalPopulation, symptomaticFraction, transmissionProbability, reco
 ######################
 SetStyle()
 
-graphModel = runModel     (60e6, 0.3, 0.3, 0.023)
-graphItaly = analyzeItaly (60e6, 0.3, 0.3, 0.023)
-graphWorld = analyzeWorld ('China', 'Hubei', 60e6, 0.3, 0.3, 0.031)
+#graphModel = runModel (60e6, 0.3, 0.3, 0.023)
+graphItaly = analyzeItaly (0, 9, 60e6, 0.3, 0.15, 0.023)
+scan = scanParameter(graphItaly[0])
+#graphWorld = analyzeWorld ('China', 'Hubei', 22, 100, 60e6, 0.3, 0.3, 0.031)
 
 raw_input('\nPress <ret> to end -> ')

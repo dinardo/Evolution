@@ -82,7 +82,7 @@ class evolution(object):
 
         fval[0] = self.chi2
 
-    def runOptimization(self, xValues, yValues, erryValues, fixParams):
+    def runOptimization(self, xValues, yValues, erryValues, fixParams, printOutLevel = 0):
         self.xValues    = xValues
         self.yValues    = yValues
         self.erryValues = erryValues
@@ -111,9 +111,17 @@ class evolution(object):
             arglist[i] = fix + 1
         gMinuit.mnexcm('FIX', arglist, len(self.fixParams), ierflg)
 
+        # Define printout level
+        arglist[0] = printOutLevel
+        # -1 = no output except from SHOW
+        #  0 = minimum output (no starting values or intermediate results) default value, normal output
+        #  1 = additional output giving intermediate results.
+        #  2 = maximum output, showing progress of minimizations.
+        gMinuit.mnexcm('SET PRI', arglist, 1, ierflg)
+
         # Now ready for minimization step
         arglist[0] = 1000 # Max calls
-        arglist[1] =  1.0 # Tolerance
+        arglist[1] =  0.1 # Tolerance
         gMinuit.mnexcm('MIGRAD', arglist, 2, ierflg)
 
         # Print results
@@ -138,6 +146,8 @@ class evolution(object):
 
         for i,value in enumerate(self.parValues):
             self.fitFun.SetParameter(i, value)
+
+        return istat
 
     def addStats(self):
         pt = TPaveText(.15, .45, .55, .85, 'NDC')
