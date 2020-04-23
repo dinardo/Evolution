@@ -4,7 +4,7 @@
 #################################################
 
 from array import array
-from math  import sqrt, log, exp, pi
+from math  import sqrt, log, exp, factorial, pi
 
 from ROOT  import TMinuit, Long, Double, TString, TPaveText, TGraph, TF1
 
@@ -28,7 +28,7 @@ class evolution(object):
         self.transmissionProbability = transmissionProbability
         self.historyActiveDt         = historyActiveDt
 
-        self.dt = 0.2 # [Day]
+        self.dt = 0.02 # [Day]
 
         self.nMeas, self.chi2, self.dof = 0., 0., 0.
 
@@ -38,21 +38,24 @@ class evolution(object):
         return self.evolveActive(t[0],par)[0]
 
     def evolveActive(self, t, par):
-        T = t - self.tStart
-        N = par[0] / self.symptomaticFraction
-        CC = par[3]
-        r = 0.
+        T   = t - self.tStart
+        N   = par[0] / self.symptomaticFraction
+        CC  = par[3]
+        r   = 0.
         CCn = 0.
         totalInfected = 0.
         historyActiveDt = self.historyActiveDt / self.symptomaticFraction
 
         for n in range(int(round(T/self.dt,1))):
-            Nn = N
             totalInfected = N + historyActiveDt * par[2]
             r = par[1] * (1. - totalInfected / CC)
+
+            Nn = N
             N += self.dt * N * (r - par[2])
+
             CCn = CC
-            CC += self.dt * par[1] / self.transmissionProbability * (N - Nn * (1. - par[2])) * (1. - CC / self.totalPopulation)
+            CC += self.dt * par[1] / self.transmissionProbability * (N - Nn * (1. - self.dt * par[2])) * (1. - CC / self.totalPopulation)
+
             historyActiveDt += Nn * self.dt
 
         return [N * self.symptomaticFraction, (totalInfected / CCn) if CCn != 0. else 0., CC]
@@ -200,7 +203,10 @@ class evolution(object):
         graphR0 = TGraph()
 
         for i in range(graphN.GetN() - 1):
-            graphR0.SetPoint(graphR0.GetN(), graphN.GetX()[i], (graphN.GetY()[i+1] - graphN.GetY()[i]) / self.dt / (graphN.GetY()[i]*self.parValues[2]) + 1)
+            if graphN.GetY()[i]*self.parValues[2] > 1e-9:
+                graphR0.SetPoint(graphR0.GetN(), graphN.GetX()[i], (graphN.GetY()[i+1] - graphN.GetY()[i]) / self.dt / (graphN.GetY()[i]*self.parValues[2]) + 1)
+            else:
+                graphR0.SetPoint(graphR0.GetN(), graphN.GetX()[i], 0)
 
         graphR0.SetLineColor(2)
         graphR0.SetLineWidth(3)

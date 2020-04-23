@@ -120,7 +120,7 @@ def analyzeItaly(tStart, tStop, totalPopulation, symptomaticFraction, transmissi
     ntuple.extend([historyActive, xValues, yValues, erryValues])
     print 'History active cases:', historyActive
 
-    evActive = evolution([yValues[0], 0.13, recoveryRate, 3e5], tStart, tStop, totalPopulation, symptomaticFraction, transmissionProbability, historyActive)
+    evActive = evolution([yValues[0], 0.13, recoveryRate, 2e5], tStart, tStop, totalPopulation, symptomaticFraction, transmissionProbability, historyActive)
     evActive.runOptimization(xValues, yValues, erryValues, [2])
     evActiveGraphN = evActive.getGraphN()
     evActiveGraphN.Draw('PL same')
@@ -276,35 +276,41 @@ def scanParameter(ntuple):
     yValues    = ntuple[8]
     erryValues = ntuple[9]
 
+    seed(1)
+    minVal = 0.001
+    maxVal = 0.02
+    N      = 100
+
     histo = TH1D("Histo", "Histo", 100, 0, 1)
     histo.GetXaxis().SetTitle('r')
     histo.GetYaxis().SetTitle('Entries')
 
-    scatter = TH2D("Scatter", "Scatter par-chi2", 40, 0, 1, 100, 0, 10)
+    scatter = TH2D("Scatter", "Scatter par-chi2", 100, 0, maxVal, 100, 0, 10)
+    scatter.GetXaxis().SetTitle('Transmission probability')
     scatter.GetYaxis().SetTitle('#chi^{2}/d.o.f.')
 
     # 27 - 100
-#    scatterC0 = TH2D("ScatterC0", "Scatter par-C0", 40, 0, 1, 100, 4e5, 8e5)
-#    scatterCn = TH2D("ScatterCn", "Scatter par-Cn", 40, 0, 1, 100, 0.4e6, 1.6e6)
+    scatterC0 = TH2D("ScatterC0", "Scatter par-C0", 100, 0, maxVal, 100, 4e5, 8e5)
+    scatterCn = TH2D("ScatterCn", "Scatter par-Cn", 100, 0, maxVal, 100, 0.4e6, 1.6e6)
     # 15 - 27
-#    scatterC0 = TH2D("ScatterC0", "Scatter par-C0", 40, 0, 1, 100, 0.8e5, 6e5)
-#    scatterCn = TH2D("ScatterCn", "Scatter par-Cn", 40, 0, 1, 100, 1e5, 8e5)
+#    scatterC0 = TH2D("ScatterC0", "Scatter par-C0", 100, 0, maxVal, 100, 0.8e5, 6e5)
+#    scatterCn = TH2D("ScatterCn", "Scatter par-Cn", 100, 0, maxVal, 100, 1e5, 8e5)
     # 9 - 15
-#    scatterC0 = TH2D("ScatterC0", "Scatter par-C0", 40, 0, 1, 100, 0.8e4, 1e5)
-#    scatterCn = TH2D("ScatterCn", "Scatter par-Cn", 40, 0, 1, 100, 1e4, 3e5)
+#    scatterC0 = TH2D("ScatterC0", "Scatter par-C0", 100, 0, maxVal, 100, 0.8e4, 1e5)
+#    scatterCn = TH2D("ScatterCn", "Scatter par-Cn", 100, 0, maxVal, 100, 1e4, 3e5)
     # 0 - 9
-    scatterC0 = TH2D("ScatterC0", "Scatter par-C0", 40, 0, 1, 100, 1e3, 8e4)
-    scatterCn = TH2D("ScatterCn", "Scatter par-Cn", 40, 0, 1, 100, 0.2e4, 1e5)
+#    scatterC0 = TH2D("ScatterC0", "Scatter par-C0", 100, 0, maxVal, 100, 1e3, 8e4)
+#    scatterCn = TH2D("ScatterCn", "Scatter par-Cn", 100, 0, maxVal, 100, 0.2e4, 1e5)
 
-    seed(1)
-    minVal = 0.01
-    maxVal = 0.99
-    N      = 1000
+    scatterC0.GetXaxis().SetTitle('Transmission probability')
+    scatterC0.GetYaxis().SetTitle('C_{0}')
+
+    scatterCn.GetXaxis().SetTitle('Transmission probability')
+    scatterCn.GetYaxis().SetTitle('C_{n}')
 
     for i in range(N):
         val = minVal + (random() * (maxVal - minVal))
         transmissionProbability = val
-#        symptomaticFraction     = val
 
         evolve = evolution([yValues[0], 0.13, recoveryRate, 4e5], tStart, tStop, totalPopulation, symptomaticFraction, transmissionProbability, historyActive)
         status = evolve.runOptimization(xValues, yValues, erryValues, [2], -1)
@@ -413,7 +419,7 @@ def analyzeWorld(country, province, tStart, tStop, totalPopulation, symptomaticF
             historyActive += active[k]
     print 'History active cases:', historyActive
 
-    evActive02 = evolution([yValues[0], 0.2, recoveryRate, 5e5], tStart, tStop, totalPopulation, symptomaticFraction, transmissionProbability, historyActive)
+    evActive02 = evolution([yValues[0], 0.2, recoveryRate, 4e5], tStart, tStop, totalPopulation, symptomaticFraction, transmissionProbability, historyActive)
     evActive02.runOptimization(xValues, yValues, erryValues, [2])
 
     print '==> Carrying capacity:', evActive02.evolveActive(tStop, evActive02.parValues)[2]
@@ -519,20 +525,20 @@ def analyzeWorld(country, province, tStart, tStop, totalPopulation, symptomaticF
 
 def runModel(totalPopulation, symptomaticFraction, transmissionProbability, recoveryRate):
     myCanvModels = TCanvas('myCanvModels','Models')
-    myCanvModels.Divide(1,2)
+#    myCanvModels.Divide(1,2)
     myGraphTmp1 = TGraph()
     myGraphTmp2 = TGraph()
 
     timeList = [9, 9+6, 9+6+11, 9+6+11+37, 9+6+11+37+60, 9+6+11+37+60+30, 9+6+11+37+60+30+60, 1000]
 
-    myCanvModels.cd(1)
+#    myCanvModels.cd(1)
     myGraphTmp1.SetPoint(myGraphTmp1.GetN(), 0, 0)
     myGraphTmp1.SetPoint(myGraphTmp1.GetN(), timeList[-1], 0)
     myGraphTmp1.SetMarkerStyle(1)
     myGraphTmp1.Draw()
     myGraphTmp1.GetXaxis().SetTitle('Time (days)')
     myGraphTmp1.GetYaxis().SetTitle('Active cases')
-
+    """
     myCanvModels.cd(2)
     myGraphTmp2.SetPoint(myGraphTmp2.GetN(), 0, 0)
     myGraphTmp2.SetPoint(myGraphTmp2.GetN(), timeList[-1], 0)
@@ -541,15 +547,15 @@ def runModel(totalPopulation, symptomaticFraction, transmissionProbability, reco
     myGraphTmp2.GetXaxis().SetTitle('Time (days)')
     myGraphTmp2.GetYaxis().SetTitle('R_{0}')
 
-    parList = [[000, 0.329, recoveryRate,  61200],
-               [000, 0.211, recoveryRate, 369000],
-               [000, 0.130, recoveryRate, 593000],
-               [000, 0.429, recoveryRate, 0],
-               [000, 0.130, recoveryRate, 0],
-               [000, 0.429, recoveryRate, 0],
-               [000, 0.130, recoveryRate, 0]]
+    parList = [[000, 0.322, recoveryRate,  51000],
+               [000, 0.231, recoveryRate, 237000],
+               [000, 0.186, recoveryRate, 378000],
+               [000, 0.412, recoveryRate, 0],
+               [000, 0.186, recoveryRate, 0],
+               [000, 0.412, recoveryRate, 0],
+               [000, 0.186, recoveryRate, 0]]
 
-    evolve = evolution([204, 0.429, recoveryRate, 13500], 0, timeList[0], totalPopulation, symptomaticFraction, transmissionProbability)
+    evolve = evolution([221, 0.412, recoveryRate, 8610], 0, timeList[0], totalPopulation, symptomaticFraction, transmissionProbability)
     graphN = evolve.combineEvolutions(parList, timeList, totalPopulation, symptomaticFraction, transmissionProbability)
     #graphN = evolve.smearing(graphN)
     graphR0 = evolve.getGraphR0(graphN)
@@ -558,28 +564,28 @@ def runModel(totalPopulation, symptomaticFraction, transmissionProbability, reco
     graphN.Draw('L same')
     myCanvModels.cd(2)
     graphR0.Draw('L same')
+    """
+    evolve1 = evolution([100, 0.19, recoveryRate, 6e5], 0, 1000, totalPopulation, symptomaticFraction, transmissionProbability)
+    graph1 = evolve1.getGraphN()
+    graph1.Draw('L same')
 
-    #evolve1 = evolution([100, 0.13, recoveryRate, 6e5], 0, 1000, totalPopulation, symptomaticFraction, transmissionProbability)
-    #graph1 = evolve1.getGraphN()
-    #graph1.Draw('L same')
+    evolve2 = evolution([100, 0.1, 0.023, 6e5], 0, 1000, 60e6, 0.3, 0.005)
+    graph2 = evolve2.getGraphN()
+    graph2.SetLineColor(4)
+    graph2.Draw('L same')
 
-    #evolve2 = evolution([100, 0.13, 0.023, 6e5], 0, 1000, 60e6, 0.3, 0.3)
-    #graph2 = evolve2.getGraphN()
-    #graph2.SetLineColor(4)
-    #graph2.Draw('L same')
-
-    #evolve3 = evolution([100, 0.13, 0.023, 6e5], 0, 1000, 60e6, 0.3, 0.3)
-    #graph3 = evolve3.getGraphN()
-    #graph3.SetLineColor(1)
-    #graph3.Draw('L same')
+    evolve3 = evolution([100, 0.4, 0.023, 6e5], 0, 1000, 60e6, 0.3, 0.005)
+    graph3 = evolve3.getGraphN()
+    graph3.SetLineColor(1)
+    graph3.Draw('L same')
 
     myCanvModels.SetGrid()
     myCanvModels.Modified()
     myCanvModels.Update()
 
     return [myCanvModels, myGraphTmp1, myGraphTmp2,
-#            graph1, graph2, graph3,
-            graphN, graphR0]
+            graph1, graph2, graph3]
+#            graphN, graphR0]
 
 
 ######################
@@ -587,9 +593,11 @@ def runModel(totalPopulation, symptomaticFraction, transmissionProbability, reco
 ######################
 SetStyle()
 
-#graphModel = runModel (60e6, 0.3, 0.3, 0.023)
-graphItaly = analyzeItaly (0, 9, 60e6, 0.3, 0.15, 0.023)
-scan = scanParameter(graphItaly[0])
-#graphWorld = analyzeWorld ('China', 'Hubei', 22, 100, 60e6, 0.3, 0.3, 0.031)
+raphModel = runModel(60e6, 0.3, 0.005, 0.023)
+#graphItaly = analyzeItaly(27, 100, 60e6, 0.3, 0.005, 0.023)
+#graphItaly[3].cd()
+#raphModel[3].Draw('same')
+#scan = scanParameter(graphItaly[0])
+#graphWorld = analyzeWorld('China', 'Hubei', 22, 100, 60e6, 0.3, 0.0.005, 0.031)
 
 raw_input('\nPress <ret> to end -> ')
