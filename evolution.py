@@ -216,8 +216,8 @@ class evolution(object):
         [active, historyActive, Pinf, CC] = self.evolveActive(timeList[0], self.parValues)
 
         for t,par in enumerate(parList):
-            par[0] = active
-            par[3] = CC if par[3] == 0 else par[3]
+            par[0] = active if par[0] == 0 else par[0]
+            par[3] = CC     if par[3] == 0 else par[3]
             evolve = evolution(par, timeList[t], timeList[t+1], totalPopulation, symptomaticFraction, transmissionProbability, historyActive)
 
             [active, historyActive, Pinf, CC] = evolve.evolveActive(timeList[t+1], evolve.parValues)

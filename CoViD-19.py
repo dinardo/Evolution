@@ -120,7 +120,7 @@ def analyzeItaly(tStart, tStop, totalPopulation, symptomaticFraction, transmissi
         if i < tStart:
             historyActive += active[k]
     ntuple.extend([historyActive, xValues, yValues, erryValues])
-    print 'History active cases:', historyActive
+    print '==> History active cases:', historyActive
 
     evActive = evolution([yValues[0], growthRate, recoveryRate, carryingCapacity], tStart, tStop, totalPopulation, symptomaticFraction, transmissionProbability, historyActive)
     evActive.runOptimization(xValues, yValues, erryValues, [2])
@@ -436,7 +436,7 @@ def analyzeWorld(country, province, tStart, tStop, totalPopulation, symptomaticF
     for i,k in enumerate(sorted(active.keys())):
         if i < tStart:
             historyActive += active[k]
-    print 'History active cases:', historyActive
+    print '==> History active cases:', historyActive
 
     evActive02 = evolution([yValues[0], growthRate, recoveryRate, carryingCapacity], tStart, tStop, totalPopulation, symptomaticFraction, transmissionProbability, historyActive)
     evActive02.runOptimization(xValues, yValues, erryValues, [2])
@@ -565,17 +565,17 @@ def runModel(totalPopulation, symptomaticFraction, transmissionProbability, reco
     myGraphTmp2.GetXaxis().SetTitle('Time (days)')
     myGraphTmp2.GetYaxis().SetTitle('R_{0}')
 
-    parList = [[000, 0.318, recoveryRate,  51800],
-               [000, 0.239, recoveryRate, 211000],
-               [000, 0.172, recoveryRate, 397000],
-               [000, 0.405, recoveryRate, 0],
-               [000, 0.172, recoveryRate, 0],
-               [000, 0.405, recoveryRate, 0],
-               [000, 0.172, recoveryRate, 0]]
+    parList = [[ 2640, 0.318, recoveryRate,  51800],
+               [ 8890, 0.239, recoveryRate, 211000],
+               [48600, 0.172, recoveryRate, 397000],
+               [0,     0.405, recoveryRate, 0],
+               [0,     0.172, recoveryRate, 0],
+               [0,     0.405, recoveryRate, 0],
+               [0,     0.172, recoveryRate, 0]]
 
     evolve = evolution([223, 0.405, recoveryRate, 8870], 0, timeList[0], totalPopulation, symptomaticFraction, transmissionProbability)
     graphN = evolve.combineEvolutions(parList, timeList, totalPopulation, symptomaticFraction, transmissionProbability)
-    graphN = evolve.smearing(graphN)
+    # graphN = evolve.smearing(graphN)
     graphR0 = evolve.getGraphR0(graphN)
     graphN.SetLineColor(4)
     myCanvModels.cd(1)
