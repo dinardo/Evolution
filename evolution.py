@@ -3,15 +3,16 @@
 # Author: Mauro E. Dinardo                      #
 #################################################
 
-from array import array
-from math  import sqrt, log, exp, factorial, pi
+from array   import array
+from math    import sqrt, log, exp, factorial, pi
+from decimal import *
 
 from ROOT  import TMinuit, Long, Double, TString, TPaveText, TGraph, TF1
 
 class evolution(object):
     def __init__(self, parValues, tStart, tStop, totalPopulation,
                  symptomaticFraction     = 0.3,
-                 transmissionProbability = 0.3,
+                 transmissionProbability = 4.7e-3,
                  historyActiveDt         = 0.):
 
         self.parNames  = ['Initial population', 'Growth rate', 'Recovery rate', 'Carrying capacity']
@@ -203,10 +204,7 @@ class evolution(object):
         graphR0 = TGraph()
 
         for i in range(graphN.GetN() - 1):
-            if graphN.GetY()[i]*self.parValues[2] > 1e-9:
-                graphR0.SetPoint(graphR0.GetN(), graphN.GetX()[i], (graphN.GetY()[i+1] - graphN.GetY()[i]) / self.dt / (graphN.GetY()[i]*self.parValues[2]) + 1)
-            else:
-                graphR0.SetPoint(graphR0.GetN(), graphN.GetX()[i], 0)
+            graphR0.SetPoint(graphR0.GetN(), graphN.GetX()[i], Decimal((graphN.GetY()[i+1] - graphN.GetY()[i]) / self.dt) / Decimal(graphN.GetY()[i] * self.parValues[2]) + 1)
 
         graphR0.SetLineColor(2)
         graphR0.SetLineWidth(3)
@@ -238,7 +236,7 @@ class evolution(object):
 
         return myGraphN
 
-    def smearing(self, graph, mean = 0.8, sigma = 0.4):
+    def smearing(self, graph, mean = 1.4, sigma = 0.3):
         nSigma  = 100.
         myGraph = TGraph()
 
