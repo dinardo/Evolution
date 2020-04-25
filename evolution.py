@@ -59,21 +59,13 @@ class evolution(object):
 
             historyActiveDt += Nn * self.dt
 
-        return [N * self.symptomaticFraction, (totalInfected / CCn) if CCn != 0. else 0., CC]
-
-    def sumHistoryActive(self, up2Time):
-        return self.totalRecovered(up2Time) / self.parValues[2]
+        return [N * self.symptomaticFraction, historyActiveDt * self.symptomaticFraction, (totalInfected / CCn) if CCn != 0. else 0., CC]
 
     def totalInfected(self, up2Time):
         return self.evolveActive(up2Time, self.parValues)[0] + self.totalRecovered(up2Time)
 
     def totalRecovered(self, up2Time):
-        historyActiveDt = self.historyActiveDt
-
-        for i in range(int(round((up2Time - self.tStart)/self.dt,1))):
-            historyActiveDt += self.evolveActive(self.tStart + i*self.dt, self.parValues)[0] * self.dt
-
-        return historyActiveDt * self.parValues[2]
+        return (self.historyActiveDt + self.evolveActive(up2Time, self.parValues)[1]) * self.parValues[2]
 
     def myChi2(self, npar, grad, fval, par, iflag):
         self.nMeas, self.chi2, delta = 0., 0., 0.
@@ -189,7 +181,7 @@ class evolution(object):
         graphP = TGraph()
 
         for i in range(1,int(round((self.tStop - self.tStart)/self.dt,1))):
-            graphP.SetPoint(graphP.GetN(), self.tStart + i*self.dt, self.evolveActive(self.tStart + i*self.dt, self.parValues)[1])
+            graphP.SetPoint(graphP.GetN(), self.tStart + i*self.dt, self.evolveActive(self.tStart + i*self.dt, self.parValues)[2])
 
         graphP.SetLineColor(2)
         graphP.SetLineWidth(3)
@@ -204,7 +196,10 @@ class evolution(object):
         graphR0 = TGraph()
 
         for i in range(graphN.GetN() - 1):
-            graphR0.SetPoint(graphR0.GetN(), graphN.GetX()[i], Decimal((graphN.GetY()[i+1] - graphN.GetY()[i]) / self.dt) / Decimal(graphN.GetY()[i] * self.parValues[2]) + 1)
+            if Decimal(graphN.GetY()[i] * self.parValues[2]) != 0:
+                graphR0.SetPoint(graphR0.GetN(), graphN.GetX()[i], Decimal((graphN.GetY()[i+1] - graphN.GetY()[i]) / self.dt) / Decimal(graphN.GetY()[i] * self.parValues[2]) + 1)
+            else:
+                graphR0.SetPoint(graphR0.GetN(), graphN.GetX()[i], 0)
 
         graphR0.SetLineColor(2)
         graphR0.SetLineWidth(3)
@@ -218,16 +213,14 @@ class evolution(object):
     def combineEvolutions(self, parList, timeList, totalPopulation, symptomaticFraction, transmissionProbability):
         myGraphN = self.getGraphN()
 
-        historyActive = self.sumHistoryActive(timeList[0])
-        [active, Pinf, CC] = self.evolveActive(timeList[0], self.parValues)
+        [active, historyActive, Pinf, CC] = self.evolveActive(timeList[0], self.parValues)
 
         for t,par in enumerate(parList):
             par[0] = active
             par[3] = CC if par[3] == 0 else par[3]
             evolve = evolution(par, timeList[t], timeList[t+1], totalPopulation, symptomaticFraction, transmissionProbability, historyActive)
 
-            historyActive += evolve.sumHistoryActive(timeList[t+1])
-            [active, Pinf, CC] = evolve.evolveActive(timeList[t+1], evolve.parValues)
+            [active, historyActive, Pinf, CC] = evolve.evolveActive(timeList[t+1], evolve.parValues)
 
             graphN = evolve.getGraphN()
 

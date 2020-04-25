@@ -128,7 +128,7 @@ def analyzeItaly(tStart, tStop, totalPopulation, symptomaticFraction, transmissi
     evActiveGraphN.Draw('PL same')
     statActive = evActive.addStats()
 
-    print '==> Active cases, p-infected, Carrying capacity:', evActive.evolveActive(tStop, evActive.parValues)
+    print '==> Active cases, history active cases * dt, p-infected, Carrying capacity', evActive.evolveActive(tStop, evActive.parValues), '@', tStop
 
     now = TLine(len(active)-1, 0, len(active)-1, evActive.fitFun.GetMaximum())
     now.SetLineColor(4)
@@ -283,7 +283,7 @@ def scanParameter(ntuple):
 
     seed(1)
     minVal = 0.001
-    maxVal = 0.02
+    maxVal = 0.020
     N      = 100
 
     histo = TH1D("Histo", "Histo", 100, 0, 1)
@@ -329,7 +329,7 @@ def scanParameter(ntuple):
             scatter.   Fill(val, evolve.chi2/evolve.dof)
             scatterPar.Fill(val, evolve.parValues[1])
             scatterC0. Fill(val, evolve.parValues[3])
-            scatterCn. Fill(val, evolve.evolveActive(tStop, evolve.parValues)[2])
+            scatterCn. Fill(val, evolve.evolveActive(tStop, evolve.parValues)[3])
 
     myCanv01 = TCanvas('myCanv01','Histogram')
     histo.Draw()
@@ -440,12 +440,11 @@ def analyzeWorld(country, province, tStart, tStop, totalPopulation, symptomaticF
 
     evActive02 = evolution([yValues[0], growthRate, recoveryRate, carryingCapacity], tStart, tStop, totalPopulation, symptomaticFraction, transmissionProbability, historyActive)
     evActive02.runOptimization(xValues, yValues, erryValues, [2])
-
-    print '==> Carrying capacity:', evActive02.evolveActive(tStop, evActive02.parValues)[2]
-
     evActiveGraph02N = evActive02.getGraphN()
     evActiveGraph02N.Draw('PL same')
     stat02 = evActive02.addStats()
+
+    print '==> Active cases, history active cases * dt, p-infected, Carrying capacity', evActive02.evolveActive(tStop, evActive02.parValues), '@', tStop
 
     myCanv02.SetGrid()
     myCanv02.Modified()
@@ -548,7 +547,7 @@ def runModel(totalPopulation, symptomaticFraction, transmissionProbability, reco
     myGraphTmp1 = TGraph()
     myGraphTmp2 = TGraph()
 
-    timeList = [9, 9+6, 9+6+11, 9+6+11+37, 9+6+11+37+60, 9+6+11+37+60+30, 9+6+11+37+60+30+60, 1000]
+    timeList = [9, 9+6, 9+6+11, 9+6+11+37, 9+6+11+37+60, 9+6+11+37+60+30, 9+6+11+37+60+30+60, 9+6+11+37+60+30+60+120]
 
     myCanvModels.cd(1)
     myGraphTmp1.SetPoint(myGraphTmp1.GetN(), 0, 0)
@@ -612,11 +611,11 @@ def runModel(totalPopulation, symptomaticFraction, transmissionProbability, reco
 ######################
 SetStyle()
 
-graphModel = runModel(60e6, 0.3, 0.0047, 0.023)
-graphItaly = analyzeItaly(27, 100, 60e6, 0.3, 0.0047, 0.023)
+graphModel = runModel(60e6, 0.3, 4.7e-3, 0.023)
+graphItaly = analyzeItaly(27, 100, 60e6, 0.3, 4.7e-3, 0.023)
 graphItaly[3].cd()
 graphModel[3].Draw('same')
 #scan = scanParameter(graphItaly[0])
-#graphWorld = analyzeWorld('China', 'Hubei', 22, 100, 60e6, 0.3, 0.0.0047, 0.031)
+#graphWorld = analyzeWorld('China', 'Hubei', 22, 100, 60e6, 0.3, 4.7e-3, 0.031)
 
 raw_input('\nPress <ret> to end -> ')
