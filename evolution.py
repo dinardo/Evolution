@@ -33,12 +33,21 @@ class evolution(object):
 
         self.nMeas, self.chi2, self.dof = 0., 0., 0.
 
+        self.lookUpTable = {}
+
         self.fitFun = TF1('Evolution', self.evolveActiveWrapper, tStart, tStop, len(self.parNames))
 
     def evolveActiveWrapper(self, t, par):
-        return self.evolveActive(t[0],par)[0]
+        return self.evolveActive(t[0], par)[0]
 
-    def evolveActive(self, t, par):
+    def evolveActiveLookUp(self, t, par):
+        T = t[0] - self.tStart
+        return self.lookUpTable[int(round(T/self.dt,1))]
+
+    def generateFunctionLookUpTable(self):
+        self.funLookUp = TF1('EvolutionLookUp', self.evolveActiveLookUp, self.tStart, self.tStop, len(self.parNames))
+
+    def evolveActive(self, t, par, doLookUp = False):
         T   = t - self.tStart
         N   = par[0] / self.symptomaticFraction
         CC  = par[3]
@@ -48,6 +57,9 @@ class evolution(object):
         historyActiveDt = self.historyActiveDt / self.symptomaticFraction
 
         for n in range(int(round(T/self.dt,1))):
+            if selfdoLookUp == True:
+                self.lookUpTable[n] = N
+
             totalInfected = N + historyActiveDt * par[2]
             r = par[1] * (1. - totalInfected / CC)
 
@@ -58,6 +70,9 @@ class evolution(object):
             CC += self.dt * par[1] / self.transmissionProbability * (N - Nn * (1. - self.dt * par[2])) * (1. - CC / self.totalPopulation)
 
             historyActiveDt += Nn * self.dt
+
+        if selfdoLookUp == True:
+            self.lookUpTable[int(round(T/self.dt,1))] = N
 
         return [N * self.symptomaticFraction, historyActiveDt * self.symptomaticFraction, (totalInfected / CCn) if CCn != 0. else 0., CC]
 
@@ -166,7 +181,7 @@ class evolution(object):
         graphN = TGraph()
 
         for i in range(int(round((self.tStop - self.tStart)/self.dt,1))):
-            graphN.SetPoint(graphN.GetN(), self.tStart + i*self.dt, self.evolveActive(self.tStart + i*self.dt, self.parValues)[0])
+            graphN.SetPoint(graphN.GetN(), self.tStart + i * self.dt, self.evolveActive(self.tStart + i * self.dt, self.parValues)[0])
 
         graphN.SetLineColor(2)
         graphN.SetLineWidth(3)
@@ -181,7 +196,7 @@ class evolution(object):
         graphP = TGraph()
 
         for i in range(1,int(round((self.tStop - self.tStart)/self.dt,1))):
-            graphP.SetPoint(graphP.GetN(), self.tStart + i*self.dt, self.evolveActive(self.tStart + i*self.dt, self.parValues)[2])
+            graphP.SetPoint(graphP.GetN(), self.tStart + i * self.dt, self.evolveActive(self.tStart + i * self.dt, self.parValues)[2])
 
         graphP.SetLineColor(2)
         graphP.SetLineWidth(3)
@@ -234,16 +249,16 @@ class evolution(object):
         myGraph = TGraph()
 
         normalize = 0.
-        for i in range(int(round(graph.GetN() + nSigma*sigma/self.dt,1))):
-            normalize += self.logNormal(i*self.dt, mean, sigma)
+        for i in range(int(round(graph.GetN() + nSigma * sigma / self.dt,1))):
+            normalize += self.logNormal(i * self.dt, mean, sigma)
         normalize *= self.dt
 
-        for i in range(int(round(graph.GetN() + nSigma*sigma/self.dt,1))):
+        for i in range(int(round(graph.GetN() + nSigma * sigma / self.dt,1))):
             convolve = 0.
             for j in range(graph.GetN()):
-                convolve += graph.GetY()[j] * self.logNormal(graph.GetX()[0] + i*self.dt - graph.GetX()[j], mean, sigma)
+                convolve += graph.GetY()[j] * self.logNormal(graph.GetX()[0] + i * self.dt - graph.GetX()[j], mean, sigma)
 
-            myGraph.SetPoint(myGraph.GetN(), graph.GetX()[0] + i*self.dt, convolve * self.dt / normalize)
+            myGraph.SetPoint(myGraph.GetN(), graph.GetX()[0] + i * self.dt, convolve * self.dt / normalize)
 
         myGraph.SetLineColor(2)
         myGraph.SetLineWidth(3)
