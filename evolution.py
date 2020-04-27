@@ -57,7 +57,7 @@ class evolution(object):
         historyActiveDt = self.historyActiveDt / self.symptomaticFraction
 
         for n in range(int(round(T/self.dt,1))):
-            if selfdoLookUp == True:
+            if doLookUp == True:
                 self.lookUpTable[n] = N
 
             totalInfected = N + historyActiveDt * par[2]
@@ -71,7 +71,7 @@ class evolution(object):
 
             historyActiveDt += Nn * self.dt
 
-        if selfdoLookUp == True:
+        if doLookUp == True:
             self.lookUpTable[int(round(T/self.dt,1))] = N
 
         return [N * self.symptomaticFraction, historyActiveDt * self.symptomaticFraction, (totalInfected / CCn) if CCn != 0. else 0., CC]
