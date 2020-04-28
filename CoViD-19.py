@@ -605,14 +605,25 @@ def runToyMC(evolve, nEv, nToy):
     evolve.evolveActive(evolve.tStop, evolve.parValues, True)
     evolve.generateFunctionLookUpTable()
 
-    nBins = int(round((evolve.tStop - evolve.tStart)/evolve.dt,1))
-
-    xValues    = [evolve.tStart + i * evolve.dt for i in range(nBins)]
+    nBins      = int(round(evolve.tStop - evolve.tStart,1))
+    xValues    = [evolve.tStart + i for i in range(nBins)]
     erryValues = [0. for i in range(nBins)]
 
     histo01 = TH1D('Histo01', evolve.parNames[0], 100, -3, 3)
     histo01.GetXaxis().SetTitle('Pulls ' + evolve.parNames[0])
     histo01.GetYaxis().SetTitle('Entries')
+
+    histo02 = TH1D('Histo02', evolve.parNames[1], 100, -3, 3)
+    histo02.GetXaxis().SetTitle('Pulls ' + evolve.parNames[1])
+    histo02.GetYaxis().SetTitle('Entries')
+
+    histo03 = TH1D('Histo03', evolve.parNames[2], 100, -3, 3)
+    histo03.GetXaxis().SetTitle('Pulls ' + evolve.parNames[2])
+    histo03.GetYaxis().SetTitle('Entries')
+
+    histo04 = TH1D('Histo04', evolve.parNames[3], 100, -3, 3)
+    histo04.GetXaxis().SetTitle('Pulls ' + evolve.parNames[3])
+    histo04.GetYaxis().SetTitle('Entries')
 
     for i in range(nToy):
         print '\n==> Toy number:', i
@@ -629,7 +640,7 @@ def runToyMC(evolve, nEv, nToy):
         for j in range(nBins):
             erryValues[j] = sqrt(yValues[j])
 
-        evToy = evolution(evolve.parValues,
+        evToy = evolution(evolve.parValues[:],
                           evolve.tStart,
                           evolve.tStop,
                           evolve.totalPopulation,
@@ -638,7 +649,10 @@ def runToyMC(evolve, nEv, nToy):
                           evolve.historyActiveDt)
         evToy.runOptimization(xValues, yValues, erryValues, [2])
 
-        histo01.Fill((evToy.parValues[0] - evolve.parValues[0]) / evToy.fitErr[0])
+        histo01.Fill(((evToy.parValues[0] - evolve.parValues[0]) / evToy.fitErr[0]) if evToy.fitErr[0] != 0 else 0)
+        histo02.Fill(((evToy.parValues[1] - evolve.parValues[1]) / evToy.fitErr[1]) if evToy.fitErr[1] != 0 else 0)
+        histo03.Fill(((evToy.parValues[2] - evolve.parValues[2]) / evToy.fitErr[2]) if evToy.fitErr[2] != 0 else 0)
+        histo04.Fill(((evToy.parValues[3] - evolve.parValues[3]) / evToy.fitErr[3]) if evToy.fitErr[3] != 0 else 0)
 
     canv01 = TCanvas('Canv01','Pulls ' + evolve.parNames[0])
     histo01.Draw()
@@ -646,7 +660,28 @@ def runToyMC(evolve, nEv, nToy):
     canv01.Modified()
     canv01.Update()
 
-    return [canv01, histo01]
+    canv02 = TCanvas('Canv02','Pulls ' + evolve.parNames[1])
+    histo02.Draw()
+    histo02.Fit('gaus')
+    canv02.Modified()
+    canv02.Update()
+
+    canv03 = TCanvas('Canv03','Pulls ' + evolve.parNames[2])
+    histo03.Draw()
+    histo03.Fit('gaus')
+    canv03.Modified()
+    canv03.Update()
+
+    canv04 = TCanvas('Canv04','Pulls ' + evolve.parNames[3])
+    histo04.Draw()
+    histo04.Fit('gaus')
+    canv04.Modified()
+    canv04.Update()
+
+    return [canv01, histo01,
+            canv02, histo02,
+            canv03, histo03,
+            canv04, histo04]
 
 
 ######################
@@ -654,14 +689,12 @@ def runToyMC(evolve, nEv, nToy):
 ######################
 SetStyle()
 
-#graphModel = runModel(60e6, 0.3, 4.7e-3, 0.023)
+ # graphModel = runModel(60e6, 0.3, 4.7e-3, 0.023)
 graphItaly = analyzeItaly(27, 100, 60e6, 0.3, 4.7e-3, 0.023)
-#graphItaly[3].cd()
-#graphModel[3].Draw('same')
-#scan = scanParameter(graphItaly[0], 100, 0.001, 0.02)
-#graphWorld = analyzeWorld('China', 'Hubei', 22, 100, 60e6, 0.3, 4.7e-3, 0.031)
-
-graphItaly[5].tStart = 0
-runToyMC(graphItaly[5], 700000, 100)
+ # graphItaly[3].cd()
+ # graphModel[3].Draw('same')
+ # scan = scanParameter(graphItaly[0], 100, 0.001, 0.02)
+ # graphWorld = analyzeWorld('China', 'Hubei', 22, 100, 60e6, 0.3, 4.7e-3, 0.031)
+graphToy = runToyMC(graphItaly[5], 6000000, 100)
 
 raw_input('\nPress <ret> to end -> ')
