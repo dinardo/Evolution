@@ -55,7 +55,7 @@ def readDataFromFile(fileName, column, country = '', province = ''):
     myDict = {}
 
     with open(fileName) as csvFile:
-        data = csv.reader(csvFile, delimiter=',')
+        data = csv.reader(csvFile, delimiter = ',')
         isFirstRow = True
         for r in data:
             if isFirstRow == True:
@@ -72,7 +72,7 @@ def readDataFromFile(fileName, column, country = '', province = ''):
     return myDict
 
 
-def analyzeItaly(tStart, tStop, totalPopulation, symptomaticFraction, transmissionProbability, recoveryRate):
+def analyzeData(country, total, active, recovered, deaths, tStart, tStop, totalPopulation, symptomaticFraction, transmissionProbability, recoveryRate):
     ntuple = [tStart, tStop, totalPopulation, symptomaticFraction, transmissionProbability, recoveryRate]
     scaleError = 3
     farFromMax = 0.95
@@ -80,25 +80,10 @@ def analyzeItaly(tStart, tStop, totalPopulation, symptomaticFraction, transmissi
     carryingCapacity = 4e5
 
 
-    ###########################
-    # Read data from database #
-    ###########################
-    print '=== Downloading data ==='
-    url      = 'https://raw.githubusercontent.com/pcm-dpc/COVID-19/master/dati-andamento-nazionale/dpc-covid19-ita-andamento-nazionale.csv'
-    fileName = url.split('/')[-1]
-    saveDataFromURL(url)
-    print '=== Done ===\n'
-
-    active    = readDataFromFile(fileName,  6)
-    recovered = readDataFromFile(fileName,  9)
-    deaths    = readDataFromFile(fileName, 10)
-    total     = readDataFromFile(fileName, 11)
-
-
     ################
     # Active cases #
     ################
-    myCanvActive = TCanvas('myCanvActive','Active cases')
+    myCanvActive = TCanvas('myCanvActive_' + country, 'Active cases ' + country)
     myGraphActive = TGraphErrors()
     myGraphActive.SetMarkerStyle(20)
 
@@ -144,7 +129,7 @@ def analyzeItaly(tStart, tStop, totalPopulation, symptomaticFraction, transmissi
     myCanvActive.Modified()
     myCanvActive.Update()
 
-    myCanvActiveR0 = TCanvas('myCanvActiveR0','R0')
+    myCanvActiveR0 = TCanvas('myCanvActiveR0_' + country, 'R0 ' + country)
 
     evActiveGraphR0 = evActive.getGraphR0(evActiveGraphN)
     evActiveGraphR0.Draw('APL')
@@ -155,7 +140,7 @@ def analyzeItaly(tStart, tStop, totalPopulation, symptomaticFraction, transmissi
     myCanvActiveR0.Modified()
     myCanvActiveR0.Update()
 
-    myCanvActiveP = TCanvas('myCanvActiveP','Probability infected')
+    myCanvActiveP = TCanvas('myCanvActiveP_' + country, 'Probability infected ' + country)
 
     evActiveGraphP = evActive.getGraphPinfect()
     evActiveGraphP.Draw('APL')
@@ -174,7 +159,7 @@ def analyzeItaly(tStart, tStop, totalPopulation, symptomaticFraction, transmissi
     ###############
     # Total cases #
     ###############
-    myCanvTotal = TCanvas('myCanvTotal', 'Total cases')
+    myCanvTotal = TCanvas('myCanvTotal_' + country, 'Total cases ' + country)
     myGraphTotal = TGraphErrors()
     myGraphTotal.SetMarkerStyle(20)
 
@@ -194,7 +179,7 @@ def analyzeItaly(tStart, tStop, totalPopulation, symptomaticFraction, transmissi
     ##########
     # Deaths #
     ##########
-    myCanvDeaths = TCanvas('myCanvDeaths','Deaths')
+    myCanvDeaths = TCanvas('myCanvDeaths_' + country, 'Deaths ' + country)
     myGraphDeaths = TGraphErrors()
     myGraphDeaths.SetMarkerStyle(20)
 
@@ -214,7 +199,7 @@ def analyzeItaly(tStart, tStop, totalPopulation, symptomaticFraction, transmissi
     ########################
     # Ratio deaths / total #
     ########################
-    myCanvRatio01 = TCanvas('myCanvRatio01','Ratio')
+    myCanvRatio01 = TCanvas('myCanvRatio01_' + country, 'Ratio ' + country)
     myGraphRatio01 = TGraphErrors()
     myGraphRatio01.SetMarkerStyle(20)
 
@@ -234,7 +219,7 @@ def analyzeItaly(tStart, tStop, totalPopulation, symptomaticFraction, transmissi
     ############################################
     # Ratio delta(deaths + recovered) / active #
     ############################################
-    myCanvRatio02 = TCanvas('myCanvRatio02','Ratio')
+    myCanvRatio02 = TCanvas('myCanvRatio02_' + country, 'Ratio ' + country)
     myGraphRatio02 = TGraphErrors()
     myGraphRatio02.SetMarkerStyle(20)
 
@@ -313,6 +298,7 @@ def scanParameter(ntuple, N, minVal, maxVal):
     scatterCn.GetYaxis().SetTitle('C_{n}')
 
     for i in range(N):
+        print '\n==> Scan number:', i
         val = minVal + (random() * (maxVal - minVal))
         transmissionProbability = val
 
@@ -358,184 +344,6 @@ def scanParameter(ntuple, N, minVal, maxVal):
             myCanv05, scatterCn]
 
 
-def analyzeWorld(country, province, tStart, tStop, totalPopulation, symptomaticFraction, transmissionProbability, recoveryRate):
-    scaleError = 3
-    growthRate = 0.13
-    carryingCapacity = 4e5
-
-
-    ###########################
-    # Read data from database #
-    ###########################
-    print '\n=== Downloading data ==='
-    url           = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv'
-    fileNameTotal = url.split('/')[-1]
-    saveDataFromURL(url)
-
-    url            = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv'
-    fileNameDeaths = url.split('/')[-1]
-    saveDataFromURL(url)
-
-    url               = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv'
-    fileNameRecovered = url.split('/')[-1]
-    saveDataFromURL(url)
-    print '=== Done ===\n'
-
-    total     = readDataFromFile(fileNameTotal,     -1, country, province)
-    deaths    = readDataFromFile(fileNameDeaths,    -1, country, province)
-    recovered = readDataFromFile(fileNameRecovered, -1, country, province)
-    active    = {}
-    for k in sorted(total.keys()):
-        active[k] = total[k] - deaths[k] - recovered[k]
-
-
-    ###############
-    # Total cases #
-    ###############
-    myCanv01 = TCanvas('myCanv01','Total cases ' + country)
-    myGraph01 = TGraphErrors()
-    myGraph01.SetMarkerStyle(20)
-
-    for k in sorted(total.keys()):
-        myGraph01.SetPoint(myGraph01.GetN(), myGraph01.GetN(), total[k])
-        myGraph01.SetPointError(myGraph01.GetN()-1, 0, sqrt(total[k]) * scaleError)
-
-    myGraph01.Draw('APE1')
-    myGraph01.GetHistogram().GetXaxis().SetTitle('Time (days)')
-    myGraph01.GetHistogram().GetYaxis().SetTitle('Total cases')
-
-    myCanv01.SetGrid()
-    myCanv01.Modified()
-    myCanv01.Update()
-
-
-    ################
-    # Active cases #
-    ################
-    myCanv02 = TCanvas('myCanv02','Active cases ' + country)
-    myGraph02 = TGraphErrors()
-    myGraph02.SetMarkerStyle(20)
-
-    for k in sorted(active.keys()):
-        myGraph02.SetPoint(myGraph02.GetN(), myGraph02.GetN(), active[k])
-        myGraph02.SetPointError(myGraph02.GetN()-1, 0, sqrt(active[k]) * scaleError)
-    myGraph02.Draw('APE1')
-    myGraph02.GetHistogram().GetXaxis().SetTitle('Time (days)')
-    myGraph02.GetHistogram().GetYaxis().SetTitle('Active cases')
-
-    xValues    = [i                            for i in range(len(active.keys()))          if i >= tStart and i <= tStop]
-    yValues    = [active[k]                    for i,k in enumerate(sorted(active.keys())) if i >= tStart and i <= tStop]
-    erryValues = [sqrt(active[k]) * scaleError for i,k in enumerate(sorted(active.keys())) if i >= tStart and i <= tStop]
-
-    historyActive = 0.
-    for i,k in enumerate(sorted(active.keys())):
-        if i < tStart:
-            historyActive += active[k]
-    print '==> History active cases:', historyActive
-
-    evActive02 = evolution([yValues[0], growthRate, recoveryRate, carryingCapacity], tStart, tStop, totalPopulation, symptomaticFraction, transmissionProbability, historyActive)
-    evActive02.runOptimization(xValues, yValues, erryValues, [2])
-    evActiveGraph02N = evActive02.getGraphN()
-    evActiveGraph02N.Draw('PL same')
-    stat02 = evActive02.addStats()
-
-    print '==> Active cases, history active cases * dt, p-infected, Carrying capacity', evActive02.evolveActive(tStop, evActive02.parValues), '@', tStop, 'day'
-
-    myCanv02.SetGrid()
-    myCanv02.Modified()
-    myCanv02.Update()
-
-    myCanv02R0 = TCanvas('myCanv02R0','R0 ' + country)
-
-    evActiveGraph02R0 = evActive02.getGraphR0(evActiveGraph02N)
-    evActiveGraph02R0.Draw('APL')
-    evActiveGraph02R0.GetHistogram().GetXaxis().SetTitle('Time (days)')
-    evActiveGraph02R0.GetHistogram().GetYaxis().SetTitle('R_{0}')
-
-    myCanv02R0.SetGrid()
-    myCanv02R0.Modified()
-    myCanv02R0.Update()
-
-    myCanv02P = TCanvas('myCanv02P','Probability infected ' + country)
-
-    evActiveGraph02P = evActive02.getGraphPinfect()
-    evActiveGraph02P.Draw('APL')
-    evActiveGraph02P.GetHistogram().GetXaxis().SetTitle('Time (days)')
-    evActiveGraph02P.GetHistogram().GetYaxis().SetTitle('Probability')
-
-    myCanv02P.SetGrid()
-    myCanv02P.Modified()
-    myCanv02P.Update()
-
-
-    ##########
-    # Deaths #
-    ##########
-    myCanv03 = TCanvas('myCanv03','Deaths ' + country)
-    myGraph03 = TGraphErrors()
-    myGraph03.SetMarkerStyle(20)
-
-    for k in sorted(deaths.keys()):
-        myGraph03.SetPoint(myGraph03.GetN(), myGraph03.GetN(), deaths[k])
-        myGraph03.SetPointError(myGraph03.GetN()-1, 0, sqrt(deaths[k]))
-
-    myGraph03.Draw('APE1')
-    myGraph03.GetHistogram().GetXaxis().SetTitle('Time (days)')
-    myGraph03.GetHistogram().GetYaxis().SetTitle('Total deaths')
-
-    myCanv03.SetGrid()
-    myCanv03.Modified()
-    myCanv03.Update()
-
-
-    ########################
-    # Ratio deaths / total #
-    ########################
-    myCanv04 = TCanvas('myCanv04','Ratio ' + country)
-    myGraph04 = TGraphErrors()
-    myGraph04.SetMarkerStyle(20)
-
-    for k in sorted(deaths.keys()):
-        myGraph04.SetPoint(myGraph04.GetN(), myGraph04.GetN(), (deaths[k]/total[k]) if total[k] != 0 else 0)
-        myGraph04.SetPointError(myGraph04.GetN()-1, 0, (myGraph04.GetY()[myGraph04.GetN()-1] * sqrt(deaths[k]/(deaths[k]*deaths[k]) + total[k]/(total[k]*total[k]))) if total[k] != 0 and deaths[k] != 0 else 0 )
-
-    myGraph04.Draw('APE1')
-    myGraph04.GetHistogram().GetXaxis().SetTitle('Time (days)')
-    myGraph04.GetHistogram().GetYaxis().SetTitle('Total deaths / Total cases')
-
-    myCanv04.SetGrid()
-    myCanv04.Modified()
-    myCanv04.Update()
-
-
-    ############################################
-    # Ratio delta(deaths + recovered) / active #
-    ############################################
-    myCanv05 = TCanvas('myCanv05','Ratio ' + country)
-    myGraph05 = TGraphErrors()
-    myGraph05.SetMarkerStyle(20)
-
-    sortedKeys = sorted(deaths.keys())
-    for i,k in enumerate(sortedKeys[1:]):
-        myGraph05.SetPoint(myGraph05.GetN(), myGraph05.GetN()+1, ((deaths[k] - deaths[sortedKeys[i]] + recovered[k] - recovered[sortedKeys[i]]) / active[k]) if active[k] != 0 else 0)
-        numerator = deaths[k] + deaths[sortedKeys[i]] + recovered[k] + recovered[sortedKeys[i]]
-        myGraph05.SetPointError(myGraph05.GetN()-1, 0, (myGraph05.GetY()[myGraph05.GetN()-1] * sqrt(numerator/pow(numerator,2) + active[k]/(active[k]*active[k]))) if active[k] != 0 and numerator != 0 else 0)
-
-    myGraph05.Draw('AP')
-    myGraph05.GetHistogram().GetXaxis().SetTitle('Time (days)')
-    myGraph05.GetHistogram().GetYaxis().SetTitle('#Delta Recovered (alive + dead) / Active cases')
-
-    myCanv05.SetGrid()
-    myCanv05.Modified()
-    myCanv05.Update()
-
-    return [myCanv01, myGraph01,
-            myCanv02, myGraph02, evActiveGraph02N, stat02,  myCanv02R0, evActiveGraph02R0, myCanv02P, evActiveGraph02P,
-            myCanv03, myGraph03,
-            myCanv04, myGraph04,
-            myCanv05, myGraph05]
-
-
 def runModel(totalPopulation, symptomaticFraction, transmissionProbability, recoveryRate):
     myCanvModels = TCanvas('myCanvModels','Models')
     myCanvModels.Divide(1,2)
@@ -560,13 +368,13 @@ def runModel(totalPopulation, symptomaticFraction, transmissionProbability, reco
     myGraphTmp2.GetXaxis().SetTitle('Time (days)')
     myGraphTmp2.GetYaxis().SetTitle('R_{0}')
 
-    parList = [[ 2640, 0.318, recoveryRate,  51800],
-               [ 8890, 0.239, recoveryRate, 211000],
-               [48600, 0.172, recoveryRate, 397000],
-               [0,     0.405, recoveryRate, 0],
-               [0,     0.172, recoveryRate, 0],
-               [0,     0.405, recoveryRate, 0],
-               [0,     0.172, recoveryRate, 0]]
+    parList = [[0, 0.318, recoveryRate,  51800],
+               [0, 0.239, recoveryRate, 211000],
+               [0, 0.172, recoveryRate, 397000],
+               [0, 0.405, recoveryRate, 0],
+               [0, 0.172, recoveryRate, 0],
+               [0, 0.405, recoveryRate, 0],
+               [0, 0.172, recoveryRate, 0]]
 
     evolve = evolution([223, 0.405, recoveryRate, 8870], 0, timeList[0], totalPopulation, symptomaticFraction, transmissionProbability)
     graphN = evolve.combineEvolutions(parList, timeList, totalPopulation, symptomaticFraction, transmissionProbability)
@@ -603,25 +411,24 @@ def runModel(totalPopulation, symptomaticFraction, transmissionProbability, reco
 
 def runToyMC(evolve, nEv, nToy):
     evolve.evolveActive(evolve.tStop, evolve.parValues, True)
-    evolve.generateFunctionLookUpTable()
 
-    nBins      = int(round(evolve.tStop - evolve.tStart,1))
-    xValues    = [evolve.tStart + i for i in range(nBins)]
-    erryValues = [0. for i in range(nBins)]
+    nBins   = int(round(evolve.tStop - evolve.tStart,1))
+    xValues = [evolve.tStart + i for i in range(nBins)]
+    nSigma  = 6
 
-    histo01 = TH1D('Histo01', evolve.parNames[0], 100, -3, 3)
+    histo01 = TH1D('Histo01', evolve.parNames[0], 100, 10, 40)
     histo01.GetXaxis().SetTitle('Pulls ' + evolve.parNames[0])
     histo01.GetYaxis().SetTitle('Entries')
 
-    histo02 = TH1D('Histo02', evolve.parNames[1], 100, -3, 3)
+    histo02 = TH1D('Histo02', evolve.parNames[1], 100, -nSigma, nSigma)
     histo02.GetXaxis().SetTitle('Pulls ' + evolve.parNames[1])
     histo02.GetYaxis().SetTitle('Entries')
 
-    histo03 = TH1D('Histo03', evolve.parNames[2], 100, -3, 3)
+    histo03 = TH1D('Histo03', evolve.parNames[2], 100, -nSigma, nSigma)
     histo03.GetXaxis().SetTitle('Pulls ' + evolve.parNames[2])
     histo03.GetYaxis().SetTitle('Entries')
 
-    histo04 = TH1D('Histo04', evolve.parNames[3], 100, -3, 3)
+    histo04 = TH1D('Histo04', evolve.parNames[3], 100, -nSigma, nSigma)
     histo04.GetXaxis().SetTitle('Pulls ' + evolve.parNames[3])
     histo04.GetYaxis().SetTitle('Entries')
 
@@ -637,8 +444,7 @@ def runToyMC(evolve, nEv, nToy):
                 it += 1
             yValues[it-1] += 1
 
-        for j in range(nBins):
-            erryValues[j] = sqrt(yValues[j])
+        erryValues = [sqrt(yValues[j]) for j in range(nBins)]
 
         evToy = evolution(evolve.parValues[:],
                           evolve.tStart,
@@ -689,12 +495,55 @@ def runToyMC(evolve, nEv, nToy):
 ######################
 SetStyle()
 
- # graphModel = runModel(60e6, 0.3, 4.7e-3, 0.023)
-graphItaly = analyzeItaly(27, 100, 60e6, 0.3, 4.7e-3, 0.023)
- # graphItaly[3].cd()
- # graphModel[3].Draw('same')
- # scan = scanParameter(graphItaly[0], 100, 0.001, 0.02)
- # graphWorld = analyzeWorld('China', 'Hubei', 22, 100, 60e6, 0.3, 4.7e-3, 0.031)
-graphToy = runToyMC(graphItaly[5], 6000000, 100)
+#graphModel = runModel(60e6, 0.3, 4.7e-3, 0.023)
+
+##################################
+# Read data from database: Italy #
+##################################
+print '=== Downloading data ==='
+url      = 'https://raw.githubusercontent.com/pcm-dpc/COVID-19/master/dati-andamento-nazionale/dpc-covid19-ita-andamento-nazionale.csv'
+fileName = url.split('/')[-1]
+#saveDataFromURL(url)
+print '=== Done ===\n'
+active    = readDataFromFile(fileName,  6)
+recovered = readDataFromFile(fileName,  9)
+deaths    = readDataFromFile(fileName, 10)
+total     = readDataFromFile(fileName, 11)
+graphItaly = analyzeData('Italy', total, active, recovered, deaths, 27, 100, 60e6, 0.3, 4.7e-3, 0.023)
+
+#graphItaly[3].cd()
+#graphModel[3].Draw('same')
+#scan = scanParameter(graphItaly[0], 100, 0.001, 0.02)
+graphToy = runToyMC(graphItaly[5], 3340564, 1000)
+
+"""
+##################################
+# Read data from database: World #
+##################################
+country  = 'China'
+province = 'Hubei'
+
+print '\n=== Downloading data ==='
+url           = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv'
+fileNameTotal = url.split('/')[-1]
+saveDataFromURL(url)
+
+url            = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv'
+fileNameDeaths = url.split('/')[-1]
+saveDataFromURL(url)
+
+url               = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv'
+fileNameRecovered = url.split('/')[-1]
+saveDataFromURL(url)
+print '=== Done ===\n'
+
+total     = readDataFromFile(fileNameTotal,     -1, country, province)
+deaths    = readDataFromFile(fileNameDeaths,    -1, country, province)
+recovered = readDataFromFile(fileNameRecovered, -1, country, province)
+active    = {}
+for k in sorted(total.keys()):
+    active[k] = total[k] - deaths[k] - recovered[k]
+graphWorld = analyzeData(country, total, active, recovered, deaths, 22, 100, 60e6, 0.3, 4.7e-3, 0.031)
+"""
 
 raw_input('\nPress <ret> to end -> ')

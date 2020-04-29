@@ -6,6 +6,7 @@
 from array   import array
 from math    import sqrt, log, exp, factorial, pi
 from decimal import *
+import numpy as np
 
 from ROOT  import TMinuit, Long, Double, TString, TPaveText, TGraph, TF1
 
@@ -33,38 +34,40 @@ class evolution(object):
 
         self.nMeas, self.chi2, self.dof = 0., 0., 0.
 
-        self.lookUpTable = {}
+        self.lookUpTable = np.zeros(0)
+        self.bins = [self.tStart + i * self.dt for i in range(int(round((self.tStop - self.tStart)/self.dt,1)) + 1)]
 
-        self.fitFun = TF1('Evolution', self.evolveActiveWrapper, tStart, tStop, len(self.parNames))
+        self.fitFun    = TF1('Evolution',       self.evolveActiveWrapper,       tStart, tStop, len(self.parNames))
+        self.funLookUp = TF1('EvolutionLookUp', self.evolveActiveLookUpWrapper, tStart, tStop, len(self.parNames))
+
+    def evolveActiveLookUpWrapper(self, t, par):
+        return self.evolveActiveLookUp(t[0])
+
+    def evolveActiveLookUp(self, t):
+        return self.lookUpTable[np.digitize([t], self.bins)[0] - 1]
 
     def evolveActiveWrapper(self, t, par):
         return self.evolveActive(t[0], par)[0]
-
-    def evolveActiveLookUp(self, t, par):
-        T = t[0] - self.tStart
-        return self.lookUpTable[int(round(T/self.dt,1))]
-
-    def generateFunctionLookUpTable(self):
-        self.funLookUp = TF1('EvolutionLookUp', self.evolveActiveLookUp, self.tStart, self.tStop, len(self.parNames))
 
     def evolveActive(self, t, par, doLookUp = False):
         T   = t - self.tStart
         N   = par[0] / self.symptomaticFraction
         CC  = par[3]
-        r   = 0.
         CCn = 0.
         totalInfected = 0.
         historyActiveDt = self.historyActiveDt / self.symptomaticFraction
+        if doLookUp == True:
+            self.lookUpTable = np.zeros(int(round(T/self.dt,1)) + 1)
 
         for n in range(int(round(T/self.dt,1))):
             if doLookUp == True:
-                self.lookUpTable[n] = N
+                self.lookUpTable[n] = N * self.symptomaticFraction
 
             totalInfected = N + historyActiveDt * par[2]
-            r = par[1] * (1. - totalInfected / CC)
+            g = par[1] * (1. - totalInfected / CC)
 
             Nn = N
-            N += self.dt * N * (r - par[2])
+            N += self.dt * N * (g - par[2])
 
             CCn = CC
             CC += self.dt * par[1] / self.transmissionProbability * (N - Nn * (1. - self.dt * par[2])) * (1. - CC / self.totalPopulation)
@@ -72,7 +75,7 @@ class evolution(object):
             historyActiveDt += Nn * self.dt
 
         if doLookUp == True:
-            self.lookUpTable[int(round(T/self.dt,1))] = N
+            self.lookUpTable[int(round(T/self.dt,1))] = N * self.symptomaticFraction
 
         return [N * self.symptomaticFraction, historyActiveDt * self.symptomaticFraction, (totalInfected / CCn) if CCn != 0. else 0., CC]
 
@@ -85,9 +88,10 @@ class evolution(object):
     def myChi2(self, npar, grad, fval, par, iflag):
         self.nMeas, self.chi2, delta = 0., 0., 0.
 
+        self.evolveActive(self.xValues[len(self.xValues)-1], par, True)
         for i,erry in enumerate(self.erryValues):
             if erry != 0:
-                delta = (self.yValues[i] - self.evolveActive(self.xValues[i], par)[0]) / erry
+                delta = (self.yValues[i] - self.evolveActiveLookUp(self.xValues[i])) / erry
                 self.chi2 += delta * delta
                 self.nMeas += 1
 
@@ -180,8 +184,9 @@ class evolution(object):
     def getGraphN(self):
         graphN = TGraph()
 
+        self.evolveActive(self.tStop, self.parValues, True)
         for i in range(int(round((self.tStop - self.tStart)/self.dt,1))):
-            graphN.SetPoint(graphN.GetN(), self.tStart + i * self.dt, self.evolveActive(self.tStart + i * self.dt, self.parValues)[0])
+            graphN.SetPoint(graphN.GetN(), self.tStart + i * self.dt, self.evolveActiveLookUp(self.tStart + i * self.dt))
 
         graphN.SetLineColor(2)
         graphN.SetLineWidth(3)
