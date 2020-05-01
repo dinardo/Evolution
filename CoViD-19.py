@@ -57,7 +57,11 @@ def readDataFromFile(fileName, column, country = '', province = ''):
     with open(fileName) as csvFile:
         data = csv.reader(csvFile, delimiter = ',')
         isFirstRow = True
+
         for r in data:
+            if not r:
+                continue
+
             if isFirstRow == True:
                 # print 'Column names are', r
                 isFirstRow = False
@@ -107,15 +111,15 @@ def analyzeData(country, total, active, recovered, deaths, tStart, tStop, totalP
     ntuple.extend([historyActive, xValues, yValues, erryValues])
     print '==> History active cases:', historyActive
 
-    evActive = evolution([yValues[0], growthRate, recoveryRate, carryingCapacity], tStart, tStop, totalPopulation, symptomaticFraction, transmissionProbability, historyActive)
+    evActive = evolution([yValues[0], carryingCapacity, recoveryRate, growthRate], tStart, tStop, totalPopulation, symptomaticFraction, transmissionProbability, historyActive)
     evActive.runOptimization(xValues, yValues, erryValues, [2])
     evActiveGraphN = evActive.getGraphN()
     evActiveGraphN.Draw('PL same')
-    statActive = evActive.addStats()
+    statActive = evActive.addStats(evActive.parNames, evActive.parValues)
 
-    print '==> Active cases, history active cases * dt, p-infected, Carrying capacity', evActive.evolveActive(tStop, evActive.parValues), '@', tStop, 'day'
+    print '==> Active cases, history active cases * dt, p-infected, Carrying capacity', evActive.evolve(tStop, evActive.parValues), '@', tStop, 'day'
 
-    now = TLine(len(active)-1, 0, len(active)-1, evActive.fitFun.GetMaximum())
+    now = TLine(len(active)-1, 0, len(active)-1, evActive.fitFun.GetMaximum(len(active)-1))
     now.SetLineColor(4)
     now.SetLineWidth(2)
     now.Draw('same')
@@ -237,7 +241,7 @@ def analyzeData(country, total, active, recovered, deaths, tStart, tStop, totalP
     myCanvRatio02.Modified()
     myCanvRatio02.Update()
 
-    print '==> Doubling time:', round(log(2)/evActive.parValues[1],1), 'days'
+    print '==> Doubling time:', round(log(2)/evActive.parValues[3],1), 'days'
 
     return [ntuple,
             myCanvTotal,   myGraphTotal,
@@ -267,16 +271,16 @@ def scanParameter(ntuple, N, minVal, maxVal):
     seed(1)
 
     histo = TH1D('Histo', 'Histo', 100, 0, 1)
-    histo.GetXaxis().SetTitle('r')
+    histo.GetXaxis().SetTitle('g')
     histo.GetYaxis().SetTitle('Entries')
 
     scatter = TH2D('Scatter', 'Scatter par-chi2', 100, minVal, maxVal, 100, 0, 10)
     scatter.GetXaxis().SetTitle('Transmission probability')
     scatter.GetYaxis().SetTitle('#chi^{2}/d.o.f.')
 
-    scatterPar = TH2D('ScatterPar', 'Scatter par-r', 100, minVal, maxVal, 100, 0, 1)
+    scatterPar = TH2D('ScatterPar', 'Scatter par-g', 100, minVal, maxVal, 100, 0, 1)
     scatterPar.GetXaxis().SetTitle('Transmission probability')
-    scatterPar.GetYaxis().SetTitle('r')
+    scatterPar.GetYaxis().SetTitle('g')
 
     # 27 - 100
     scatterC0 = TH2D('ScatterC0', 'Scatter par-C0', 100, minVal, maxVal, 100, 4e5, 8e5)
@@ -302,15 +306,15 @@ def scanParameter(ntuple, N, minVal, maxVal):
         val = minVal + (random() * (maxVal - minVal))
         transmissionProbability = val
 
-        evolve = evolution([yValues[0], growthRate, recoveryRate, carryingCapacity], tStart, tStop, totalPopulation, symptomaticFraction, transmissionProbability, historyActive)
+        evolve = evolution([yValues[0], carryingCapacity, recoveryRate, growthRate], tStart, tStop, totalPopulation, symptomaticFraction, transmissionProbability, historyActive)
         status = evolve.runOptimization(xValues, yValues, erryValues, [2], -1)
 
         if status == 3:
-            histo.     Fill(evolve.parValues[1])
+            histo.     Fill(evolve.parValues[3])
             scatter.   Fill(val, evolve.chi2/evolve.dof)
-            scatterPar.Fill(val, evolve.parValues[1])
-            scatterC0. Fill(val, evolve.parValues[3])
-            scatterCn. Fill(val, evolve.evolveActive(tStop, evolve.parValues)[3])
+            scatterPar.Fill(val, evolve.parValues[3])
+            scatterC0. Fill(val, evolve.parValues[1])
+            scatterCn. Fill(val, evolve.evolve(tStop, evolve.parValues)[3])
 
     myCanv01 = TCanvas('myCanv01','Histogram')
     histo.Draw()
@@ -350,7 +354,7 @@ def runModel(totalPopulation, symptomaticFraction, transmissionProbability, reco
     myGraphTmp1 = TGraph()
     myGraphTmp2 = TGraph()
 
-    timeList = [9, 9+6, 9+6+11, 9+6+11+37, 9+6+11+37+60, 9+6+11+37+60+30, 9+6+11+37+60+30+60, 9+6+11+37+60+30+60+120]
+    timeList = [9, 9+6, 9+6+11, 9+6+11+37, 9+6+11+37+60, 9+6+11+37+60+30, 9+6+11+37+60+30+60, 9+6+11+37+60+30+60 +120]
 
     myCanvModels.cd(1)
     myGraphTmp1.SetPoint(myGraphTmp1.GetN(), 0, 0)
@@ -368,17 +372,17 @@ def runModel(totalPopulation, symptomaticFraction, transmissionProbability, reco
     myGraphTmp2.GetXaxis().SetTitle('Time (days)')
     myGraphTmp2.GetYaxis().SetTitle('R_{0}')
 
-    parList = [[0, 0.318, recoveryRate,  51800],
-               [0, 0.239, recoveryRate, 211000],
-               [0, 0.172, recoveryRate, 397000],
-               [0, 0.405, recoveryRate, 0],
-               [0, 0.172, recoveryRate, 0],
-               [0, 0.405, recoveryRate, 0],
-               [0, 0.172, recoveryRate, 0]]
+    parList = [[0,  51800, recoveryRate, 0.318],
+               [0, 211000, recoveryRate, 0.239],
+               [0, 397000, recoveryRate, 0.172],
+               [0,      0, recoveryRate, 0.405],
+               [0,      0, recoveryRate, 0.172],
+               [0,      0, recoveryRate, 0.405],
+               [0,      0, recoveryRate, 0.172]]
 
-    evolve = evolution([223, 0.405, recoveryRate, 8870], 0, timeList[0], totalPopulation, symptomaticFraction, transmissionProbability)
+    evolve = evolution([223, 8870, recoveryRate, 0.405], 0, timeList[0], totalPopulation, symptomaticFraction, transmissionProbability)
     graphN = evolve.combineEvolutions(parList, timeList, totalPopulation, symptomaticFraction, transmissionProbability)
-    # graphN = evolve.smearing(graphN)
+    #graphN = evolve.smearing(graphN)
     graphR0 = evolve.getGraphR0(graphN)
     graphN.SetLineColor(4)
     myCanvModels.cd(1)
@@ -386,16 +390,16 @@ def runModel(totalPopulation, symptomaticFraction, transmissionProbability, reco
     myCanvModels.cd(2)
     graphR0.Draw('L same')
     """
-    evolve1 = evolution([200, 0.17, recoveryRate, 8900], 0, 1000, totalPopulation, symptomaticFraction, transmissionProbability)
+    evolve1 = evolution([200, 8900, recoveryRate, 0.17], 0, 1000, totalPopulation, symptomaticFraction, transmissionProbability)
     graph1 = evolve1.getGraphN()
     graph1.Draw('L same')
 
-    evolve2 = evolution([200, 0.17, 0.023, 8900], 0, 1000, 60e6, 0.3, 4.7e-3)
+    evolve2 = evolution([200, 8900, 0.023, 0.17], 0, 1000, 60e6, 0.3, 4.7e-3)
     graph2 = evolve2.getGraphN()
     graph2.SetLineColor(4)
     graph2.Draw('L same')
 
-    evolve3 = evolution([200, 0.17, 0.023, 8900], 0, 1000, 60e6, 0.3, 4.7e-3)
+    evolve3 = evolution([200, 8900, 0.023, 0.17], 0, 1000, 60e6, 0.3, 4.7e-3)
     graph3 = evolve3.getGraphN()
     graph3.SetLineColor(1)
     graph3.Draw('L same')
@@ -410,7 +414,7 @@ def runModel(totalPopulation, symptomaticFraction, transmissionProbability, reco
 
 
 def runToyMC(evolve, nEv, nToy):
-    evolve.evolveActive(evolve.tStop, evolve.parValues, True)
+    evolve.evolve(evolve.tStop, evolve.parValues, True)
 
     nBins   = int(round(evolve.tStop - evolve.tStart,1))
     xValues = [evolve.tStart + i for i in range(nBins)]
@@ -489,6 +493,87 @@ def runToyMC(evolve, nEv, nToy):
             canv03, histo03,
             canv04, histo04]
 
+def runGlobalFit(country, active, totalPopulation, symptomaticFraction, transmissionProbability, recoveryRate):
+    scaleError = 3
+    tStart = 0
+    tStop  = 9+6+11+37 +20
+    timeList = [9, 9+6, 9+6+11, tStop]
+#    tStart = 9
+#    tStop  = 9+6+11+37 +20
+#    timeList = [9+6, 9+6+11, tStop]
+
+    xValues    = [i                            for i in range(len(active.keys()))          if i >= tStart and i <= tStop]
+    yValues    = [active[k]                    for i,k in enumerate(sorted(active.keys())) if i >= tStart and i <= tStop]
+    erryValues = [sqrt(active[k]) * scaleError for i,k in enumerate(sorted(active.keys())) if i >= tStart and i <= tStop]
+
+    evActive = evolution([223, 8870, recoveryRate, 0.405], tStart, timeList[0], totalPopulation, symptomaticFraction, transmissionProbability)
+    evolutions = [
+        evolution([0, 0, recoveryRate, 0.318], timeList[0], timeList[1], totalPopulation, symptomaticFraction, transmissionProbability),
+        evolution([0, 0, recoveryRate, 0.239], timeList[1], timeList[2], totalPopulation, symptomaticFraction, transmissionProbability),
+        evolution([0, 0, recoveryRate, 0.172], timeList[2], timeList[3], totalPopulation, symptomaticFraction, transmissionProbability)]
+#    evActive = evolution([2640, 51800, recoveryRate, 0.239], tStart, timeList[0], totalPopulation, symptomaticFraction, transmissionProbability)
+#    evolutions = [
+#        evolution([0, 0, recoveryRate, 0.239], timeList[0], timeList[1], totalPopulation, symptomaticFraction, transmissionProbability),
+#        evolution([0, 0, recoveryRate, 0.172], timeList[1], timeList[2], totalPopulation, symptomaticFraction, transmissionProbability)]
+    istat, parValues, parNames = evActive.runGlobalOptimization(evolutions, xValues, yValues, erryValues, [2])
+
+    myCanvActive = TCanvas('myCanvActive_' + country, 'Active cases ' + country)
+    myGraphActive = TGraphErrors()
+    myGraphActive.SetMarkerStyle(20)
+
+    for k in sorted(active.keys()):
+        myGraphActive.SetPoint(myGraphActive.GetN(), myGraphActive.GetN(), active[k])
+        myGraphActive.SetPointError(myGraphActive.GetN()-1, 0, sqrt(active[k]) * scaleError)
+    myGraphActive.SetPoint(myGraphActive.GetN(), tStop, 0)
+    myGraphActive.SetPointError(myGraphActive.GetN()-1, 0, 0)
+    myGraphActive.Draw('APE1')
+    myGraphActive.GetHistogram().GetXaxis().SetTitle('Time (days)')
+    myGraphActive.GetHistogram().GetYaxis().SetTitle('Active cases affected by CoViD-19')
+
+    evActiveGraphN = evActive.getGraphGlobalN(evolutions, parValues)
+    evActiveGraphN.Draw('PL same')
+    statActive = evActive.addStats(parNames, parValues)
+
+    print '==> Active cases, history active cases * dt, p-infected, Carrying capacity', evActive.evolveGlobal(evolutions, tStop, parValues), '@', tStop, 'day'
+
+    now = TLine(len(active)-1, 0, len(active)-1, evActive.fitFun.Eval(len(active)-1))
+    now.SetLineColor(4)
+    now.SetLineWidth(2)
+    now.Draw('same')
+
+    willbe = TLine(evActive.fitFun.GetMaximumX(), 0, evActive.fitFun.GetMaximumX(), evActive.fitFun.GetMaximum())
+    willbe.SetLineColor(6)
+    willbe.SetLineWidth(2)
+    willbe.Draw('same')
+
+    myCanvActive.SetGrid()
+    myCanvActive.Modified()
+    myCanvActive.Update()
+
+    myCanvActiveR0 = TCanvas('myCanvActiveR0_' + country, 'R0 ' + country)
+
+    evActiveGraphR0 = evActive.getGraphR0(evActiveGraphN)
+    evActiveGraphR0.Draw('APL')
+    evActiveGraphR0.GetHistogram().GetXaxis().SetTitle('Time (days)')
+    evActiveGraphR0.GetHistogram().GetYaxis().SetTitle('R_{0}')
+
+    myCanvActiveR0.SetGrid()
+    myCanvActiveR0.Modified()
+    myCanvActiveR0.Update()
+
+    myCanvActiveP = TCanvas('myCanvActiveP_' + country, 'Probability infected ' + country)
+
+    evActiveGraphP = evActive.getGraphGlobalPinfect(evolutions, parValues)
+    evActiveGraphP.Draw('APL')
+    evActiveGraphP.GetHistogram().GetXaxis().SetTitle('Time (days)')
+    evActiveGraphP.GetHistogram().GetYaxis().SetTitle('Probability')
+
+    myCanvActiveP.SetGrid()
+    myCanvActiveP.Modified()
+    myCanvActiveP.Update()
+
+    return [myCanvActive,  myGraphActive, evActive, evActiveGraphN, statActive, now, willbe, myCanvActiveR0, evActiveGraphR0, myCanvActiveP, evActiveGraphP]
+
 
 ######################
 # Start main program #
@@ -503,7 +588,7 @@ SetStyle()
 print '=== Downloading data ==='
 url      = 'https://raw.githubusercontent.com/pcm-dpc/COVID-19/master/dati-andamento-nazionale/dpc-covid19-ita-andamento-nazionale.csv'
 fileName = url.split('/')[-1]
-#saveDataFromURL(url)
+saveDataFromURL(url)
 print '=== Done ===\n'
 active    = readDataFromFile(fileName,  6)
 recovered = readDataFromFile(fileName,  9)
@@ -514,7 +599,8 @@ graphItaly = analyzeData('Italy', total, active, recovered, deaths, 27, 100, 60e
 #graphItaly[3].cd()
 #graphModel[3].Draw('same')
 #scan = scanParameter(graphItaly[0], 100, 0.001, 0.02)
-graphToy = runToyMC(graphItaly[5], 3340564, 1000)
+#graphToy = runToyMC(graphItaly[5], 3340564, 1000)
+#graphGlobal = runGlobalFit('Italy', active, 60e6, 0.3, 4.7e-3, 0.023)
 
 """
 ##################################
