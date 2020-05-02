@@ -3,7 +3,6 @@
 # Author: Mauro E. Dinardo           #
 ######################################
 
-
 import csv
 from datetime import datetime
 from random   import seed, random, gauss
@@ -138,7 +137,7 @@ def analyzeData(country, total, active, recovered, deaths, tStart, tStop, totalP
     evActiveGraphR0 = evActive.getGraphR0(evActiveGraphN)
     evActiveGraphR0.Draw('APL')
     evActiveGraphR0.GetHistogram().GetXaxis().SetTitle('Time (days)')
-    evActiveGraphR0.GetHistogram().GetYaxis().SetTitle('R_{0}')
+    evActiveGraphR0.GetHistogram().GetYaxis().SetTitle('R')
 
     myCanvActiveR0.SetGrid()
     myCanvActiveR0.Modified()
@@ -149,7 +148,7 @@ def analyzeData(country, total, active, recovered, deaths, tStart, tStop, totalP
     evActiveGraphP = evActive.getGraphPinfect()
     evActiveGraphP.Draw('APL')
     evActiveGraphP.GetHistogram().GetXaxis().SetTitle('Time (days)')
-    evActiveGraphP.GetHistogram().GetYaxis().SetTitle('Probability')
+    evActiveGraphP.GetHistogram().GetYaxis().SetTitle('Probability of being infected')
 
     myCanvActiveP.SetGrid()
     myCanvActiveP.Modified()
@@ -370,7 +369,7 @@ def runModel(totalPopulation, symptomaticFraction, transmissionProbability, reco
     myGraphTmp2.SetMarkerStyle(1)
     myGraphTmp2.Draw()
     myGraphTmp2.GetXaxis().SetTitle('Time (days)')
-    myGraphTmp2.GetYaxis().SetTitle('R_{0}')
+    myGraphTmp2.GetYaxis().SetTitle('R')
 
     parList = [[0,  51800, recoveryRate, 0.318],
                [0, 211000, recoveryRate, 0.239],
@@ -555,7 +554,7 @@ def runGlobalFit(country, active, totalPopulation, symptomaticFraction, transmis
     evActiveGraphR0 = evActive.getGraphR0(evActiveGraphN)
     evActiveGraphR0.Draw('APL')
     evActiveGraphR0.GetHistogram().GetXaxis().SetTitle('Time (days)')
-    evActiveGraphR0.GetHistogram().GetYaxis().SetTitle('R_{0}')
+    evActiveGraphR0.GetHistogram().GetYaxis().SetTitle('R')
 
     myCanvActiveR0.SetGrid()
     myCanvActiveR0.Modified()
@@ -566,7 +565,7 @@ def runGlobalFit(country, active, totalPopulation, symptomaticFraction, transmis
     evActiveGraphP = evActive.getGraphGlobalPinfect(evolutions, parValues)
     evActiveGraphP.Draw('APL')
     evActiveGraphP.GetHistogram().GetXaxis().SetTitle('Time (days)')
-    evActiveGraphP.GetHistogram().GetYaxis().SetTitle('Probability')
+    evActiveGraphP.GetHistogram().GetYaxis().SetTitle('Probability of being infected')
 
     myCanvActiveP.SetGrid()
     myCanvActiveP.Modified()
@@ -588,19 +587,19 @@ SetStyle()
 print '=== Downloading data ==='
 url      = 'https://raw.githubusercontent.com/pcm-dpc/COVID-19/master/dati-andamento-nazionale/dpc-covid19-ita-andamento-nazionale.csv'
 fileName = url.split('/')[-1]
-saveDataFromURL(url)
+#saveDataFromURL(url)
 print '=== Done ===\n'
 active    = readDataFromFile(fileName,  6)
 recovered = readDataFromFile(fileName,  9)
 deaths    = readDataFromFile(fileName, 10)
 total     = readDataFromFile(fileName, 11)
-graphItaly = analyzeData('Italy', total, active, recovered, deaths, 27, 100, 60e6, 0.3, 4.7e-3, 0.023)
+#graphItaly = analyzeData('Italy', total, active, recovered, deaths, 27, 100, 60e6, 0.3, 4.7e-3, 0.023)
 
 #graphItaly[3].cd()
 #graphModel[3].Draw('same')
-#scan = scanParameter(graphItaly[0], 100, 0.001, 0.02)
+#graphScan = scanParameter(graphItaly[0], 100, 0.001, 0.02)
 #graphToy = runToyMC(graphItaly[5], 3340564, 1000)
-#graphGlobal = runGlobalFit('Italy', active, 60e6, 0.3, 4.7e-3, 0.023)
+graphGlobal = runGlobalFit('Italy', active, 60e6, 0.3, 4.7e-3, 0.023)
 
 """
 ##################################

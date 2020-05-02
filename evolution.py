@@ -2,10 +2,6 @@
 # Finite difference model for disease evolution #
 # Author: Mauro E. Dinardo                      #
 #################################################
-# Todo: make the following for global fit       #
-#       speed up smearing                       #
-#       add smeaaring in fit                    #
-#################################################
 
 from array   import array
 from math    import sqrt, log, exp, factorial, pi
