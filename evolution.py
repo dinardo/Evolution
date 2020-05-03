@@ -21,6 +21,7 @@ class evolution(object):
 
         self.tStart = tStart
         self.tStop  = tStop
+        self.doSmearing = False
 
         ####################
         # Model parameters #
@@ -106,6 +107,8 @@ class evolution(object):
         for i,ev in enumerate(evolutions):
             ev.parValues[0] = active
             ev.parValues[1] = CC
+#            ev.parValues[0] = active if ev.parValues[0] == 0 else ev.parValues[0]
+#            ev.parValues[1] = CC     if ev.parValues[1] == 0 else ev.parValues[1]
             ev.parValues[2] = par[2]
             ev.parValues[3] = par[4+i]
             ev.historyActiveDt = historyActiveDt
@@ -133,6 +136,9 @@ class evolution(object):
         self.nMeas, self.chi2, delta = 0., 0., 0.
 
         self.evolve(self.xValues[len(self.xValues)-1], par, True)
+        if self.doSmearing == True:
+            self.smearing()
+
         for i,erry in enumerate(self.erryValues):
             if erry != 0:
                 delta = (self.yValues[i] - self.evolveLookUp(self.xValues[i])) / erry
@@ -145,6 +151,9 @@ class evolution(object):
         self.nMeas, self.chi2, delta = 0., 0., 0.
 
         self.evolveGlobal(self.evolutions, self.xValues[len(self.xValues)-1], par, True)
+        if self.doSmearing == True:
+            self.smearing()
+
         for i,erry in enumerate(self.erryValues):
             if erry != 0:
                 delta = (self.yValues[i] - self.evolveLookUp(self.xValues[i])) / erry
@@ -205,7 +214,9 @@ class evolution(object):
 
         return gMinuit, istat
 
-    def runOptimization(self, xValues, yValues, erryValues, fixParams, printOutLevel = 0):
+    def runOptimization(self, xValues, yValues, erryValues, fixParams, doSmearing = False, printOutLevel = 0):
+        self.doSmearing = doSmearing
+
         gMinuit, istat = self.prepareAndRunOptimizer(xValues, yValues, erryValues, fixParams, self.costFunction, self.parValues, self.parNames, printOutLevel)
 
         # Extract parameters and errors
@@ -226,8 +237,9 @@ class evolution(object):
 
         return istat
 
-    def runGlobalOptimization(self, evolutions, xValues, yValues, erryValues, fixParams, printOutLevel = 0):
+    def runGlobalOptimization(self, evolutions, xValues, yValues, erryValues, fixParams, doSmearing = False, printOutLevel = 0):
         self.evolutions = evolutions
+        self.doSmearing = doSmearing
 
         parNames = ['Initial population', 'Carrying capacity', 'Recovery rate', 'Growth rate-0']
         parNames.extend(['Growth rate-' + str(i+1) for i in range(len(evolutions))])
@@ -279,7 +291,6 @@ class evolution(object):
     def getGraphN(self):
         graphN = TGraph()
 
-        self.evolve(self.tStop, self.parValues, True)
         for x in self.bins:
             graphN.SetPoint(graphN.GetN(), x, self.evolveLookUp(x))
 
@@ -292,21 +303,23 @@ class evolution(object):
 
         return graphN
 
-    def getGraphGlobalN(self, evolutions, parValues):
-        graphN = TGraph()
+    def getGraphR0(self, graphN):
+        graphR0 = TGraph()
 
-        self.evolveGlobal(evolutions, evolutions[-1].tStop, parValues, True)
-        for x in self.bins:
-            graphN.SetPoint(graphN.GetN(), x, self.evolveLookUp(x))
+        for i in range(graphN.GetN() - 1):
+            if Decimal(graphN.GetY()[i] * self.parValues[2]) != 0:
+                graphR0.SetPoint(graphR0.GetN(), graphN.GetX()[i], Decimal((graphN.GetY()[i+1] - graphN.GetY()[i]) / self.dt) / Decimal(graphN.GetY()[i] * self.parValues[2]) + 1)
+            else:
+                graphR0.SetPoint(graphR0.GetN(), graphN.GetX()[i], 0)
 
-        graphN.SetLineColor(2)
-        graphN.SetLineWidth(3)
+        graphR0.SetLineColor(2)
+        graphR0.SetLineWidth(3)
 
-        graphN.SetMarkerColor(2)
-        graphN.SetMarkerSize(1.3)
-        graphN.SetMarkerStyle(29)
+        graphR0.SetMarkerColor(2)
+        graphR0.SetMarkerSize(1.3)
+        graphR0.SetMarkerStyle(29)
 
-        return graphN
+        return graphR0
 
     def getGraphPinfect(self):
         graphP = TGraph()
@@ -338,61 +351,11 @@ class evolution(object):
 
         return graphP
 
-    def getGraphR0(self, graphN):
-        graphR0 = TGraph()
-
-        for i in range(graphN.GetN() - 1):
-            if Decimal(graphN.GetY()[i] * self.parValues[2]) != 0:
-                graphR0.SetPoint(graphR0.GetN(), graphN.GetX()[i], Decimal((graphN.GetY()[i+1] - graphN.GetY()[i]) / self.dt) / Decimal(graphN.GetY()[i] * self.parValues[2]) + 1)
-            else:
-                graphR0.SetPoint(graphR0.GetN(), graphN.GetX()[i], 0)
-
-        graphR0.SetLineColor(2)
-        graphR0.SetLineWidth(3)
-
-        graphR0.SetMarkerColor(2)
-        graphR0.SetMarkerSize(1.3)
-        graphR0.SetMarkerStyle(29)
-
-        return graphR0
-
-    def combineEvolutions(self, parList, timeList, totalPopulation, symptomaticFraction, transmissionProbability):
-        myGraphN = self.getGraphN()
-
-        [active, historyActiveDt, Pinf, CC] = self.evolve(timeList[0], self.parValues)
-
-        for t,par in enumerate(parList):
-            par[0] = active if par[0] == 0 else par[0]
-            par[1] = CC     if par[1] == 0 else par[1]
-            evolve = evolution(par, timeList[t], timeList[t+1], totalPopulation, symptomaticFraction, transmissionProbability, historyActiveDt)
-
-            [active, historyActiveDt, Pinf, CC] = evolve.evolve(timeList[t+1], evolve.parValues)
-
-            graphN = evolve.getGraphN()
-
-            for i in range(graphN.GetN()):
-                myGraphN.SetPoint(myGraphN.GetN(), graphN.GetX()[i], graphN.GetY()[i])
-
-        return myGraphN
-
-    def smearing(self, graph, mean = 1.4, sigma = 0.3):
-        nSigma  = 100.
-        myGraph = TGraph()
-
-        normalize = sum([self.logNormal(i * self.dt, mean, sigma) for i in range(int(round(graph.GetN() + nSigma * sigma / self.dt,1)))]) * self.dt
-
-        for i in range(int(round(graph.GetN() + nSigma * sigma / self.dt,1))):
-            convolve = sum([(graph.GetY()[j] * self.logNormal(graph.GetX()[0] + i * self.dt - graph.GetX()[j], mean, sigma)) for j in range(graph.GetN())])
-            myGraph.SetPoint(myGraph.GetN(), graph.GetX()[0] + i * self.dt, convolve * self.dt / normalize)
-
-        myGraph.SetLineColor(2)
-        myGraph.SetLineWidth(3)
-
-        myGraph.SetMarkerColor(2)
-        myGraph.SetMarkerSize(1.3)
-        myGraph.SetMarkerStyle(29)
-
-        return myGraph
+    def smearing(self, mean = 1.4, sigma = 0.3):
+        nSigma = 100.
+        g = [self.logNormal(i * self.dt, mean, sigma) for i in range(int(round(nSigma * sigma / self.dt,1)))]
+        self.lookUpTable = np.convolve(self.lookUpTable, g) * self.dt
+        self.bins = [self.tStart + i * self.dt for i in range(len(self.lookUpTable))]
 
     def logNormal(self, x, mean, sigma):
         if x <= 0: return 0.
