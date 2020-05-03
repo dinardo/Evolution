@@ -75,9 +75,13 @@ def readDataFromFile(fileName, column, country = '', province = ''):
     return myDict
 
 
-def analyzeData(country, total, active, recovered, deaths, tStart, tStop, totalPopulation, symptomaticFraction, transmissionProbability, recoveryRate):
-    ntuple = [tStart, tStop, totalPopulation, symptomaticFraction, transmissionProbability, recoveryRate]
+def assignErrors(yValues):
     scaleError = 3
+    return [sqrt(y) * scaleError for y in yValues]
+
+
+def analyzeData(country, total, active, recovered, deaths, tStart, tStop, totalPopulation, symptomaticFraction, transmissionProbability, recoveryRate, doSmearing):
+    ntuple = [tStart, tStop, totalPopulation, symptomaticFraction, transmissionProbability, recoveryRate]
     farFromMax = 0.95
     growthRate = 0.13
     carryingCapacity = 4e5
@@ -87,21 +91,19 @@ def analyzeData(country, total, active, recovered, deaths, tStart, tStop, totalP
     # Active cases #
     ################
     myCanvActive = TCanvas('myCanvActive_' + country, 'Active cases ' + country)
+
+    xValues    = [i         for i in range(len(active.keys()))          if i >= tStart and i <= tStop]
+    yValues    = [active[k] for i,k in enumerate(sorted(active.keys())) if i >= tStart and i <= tStop]
+    erryValues = assignErrors(yValues)
+
     myGraphActive = TGraphErrors()
     myGraphActive.SetMarkerStyle(20)
-
-    for k in sorted(active.keys()):
-        myGraphActive.SetPoint(myGraphActive.GetN(), myGraphActive.GetN(), active[k])
-        myGraphActive.SetPointError(myGraphActive.GetN()-1, 0, sqrt(active[k]) * scaleError)
-    myGraphActive.SetPoint(myGraphActive.GetN(), tStop, 0)
-    myGraphActive.SetPointError(myGraphActive.GetN()-1, 0, 0)
+    for i in range(len(xValues)):
+        myGraphActive.SetPoint(myGraphActive.GetN(), xValues[i], yValues[i])
+        myGraphActive.SetPointError(myGraphActive.GetN()-1, 0, erryValues[i])
     myGraphActive.Draw('APE1')
     myGraphActive.GetHistogram().GetXaxis().SetTitle('Time (days)')
     myGraphActive.GetHistogram().GetYaxis().SetTitle('Active cases affected by CoViD-19')
-
-    xValues    = [i                            for i in range(len(active.keys()))          if i >= tStart and i <= tStop]
-    yValues    = [active[k]                    for i,k in enumerate(sorted(active.keys())) if i >= tStart and i <= tStop]
-    erryValues = [sqrt(active[k]) * scaleError for i,k in enumerate(sorted(active.keys())) if i >= tStart and i <= tStop]
 
     historyActive = 0.
     for i,k in enumerate(sorted(active.keys())):
@@ -111,8 +113,10 @@ def analyzeData(country, total, active, recovered, deaths, tStart, tStop, totalP
     print '==> History active cases:', historyActive
 
     evActive = evolution([yValues[0], carryingCapacity, recoveryRate, growthRate], tStart, tStop, totalPopulation, symptomaticFraction, transmissionProbability, historyActive)
-    evActive.runOptimization(xValues, yValues, erryValues, [2])
+    evActive.runOptimization(xValues, yValues, erryValues, [2], doSmearing)
     evActive.evolve(evActive.tStop, evActive.parValues, True)
+    if doSmearing == True:
+        evActive.smearing()
     evActiveGraphN = evActive.getGraphN()
     evActiveGraphN.Draw('PL same')
     statActive = evActive.addStats(evActive.parNames, evActive.parValues)
@@ -169,7 +173,7 @@ def analyzeData(country, total, active, recovered, deaths, tStart, tStop, totalP
 
     for k in sorted(total.keys()):
         myGraphTotal.SetPoint(myGraphTotal.GetN(), myGraphTotal.GetN(), total[k])
-        myGraphTotal.SetPointError(myGraphTotal.GetN()-1, 0, sqrt(total[k]) * scaleError)
+        myGraphTotal.SetPointError(myGraphTotal.GetN()-1, 0, sqrt(total[k]))
 
     myGraphTotal.Draw('APE1')
     myGraphTotal.GetHistogram().GetXaxis().SetTitle('Time (days)')
@@ -368,8 +372,8 @@ def runModel(totalPopulation, symptomaticFraction, transmissionProbability, reco
     myGraphTmp1 = TGraph()
     myGraphTmp2 = TGraph()
 
-    timeList  = [9, 9+6, 9+6+11, 9+6+11+37, 9+6+11+37+60, 9+6+11+37+60+30, 9+6+11+37+60+30+60, 9+6+11+37+60+30+60 +120]
-    parValues = [223, 8870, recoveryRate, 0.405, 0.318, 0.239, 0.172, 0.405, 0.172, 0.405, 0.172]
+    timeList  = [9, 9+6, 9+6+11, 9+6+11+43, 9+6+11+43+60, 9+6+11+43+60+30, 9+6+11+43+60+30+60, 9+6+11+43+60+30+60 +120]
+    parValues = [223, 8870, recoveryRate, 0.405, 0.318, 0.239, 0.161, 0.405, 0.161, 0.405, 0.161]
 
     myCanvModels.cd(1)
     myGraphTmp1.SetPoint(myGraphTmp1.GetN(), 0, 0)
@@ -391,13 +395,13 @@ def runModel(totalPopulation, symptomaticFraction, transmissionProbability, reco
     evolutions = [
         evolution([0,  51800, recoveryRate, parValues[4]],  timeList[0], timeList[1], totalPopulation, symptomaticFraction, transmissionProbability),
         evolution([0, 211000, recoveryRate, parValues[5]],  timeList[1], timeList[2], totalPopulation, symptomaticFraction, transmissionProbability),
-        evolution([0, 397000, recoveryRate, parValues[6]],  timeList[2], timeList[3], totalPopulation, symptomaticFraction, transmissionProbability),
+        evolution([0, 419000, recoveryRate, parValues[6]],  timeList[2], timeList[3], totalPopulation, symptomaticFraction, transmissionProbability),
         evolution([0,      0, recoveryRate, parValues[7]],  timeList[3], timeList[4], totalPopulation, symptomaticFraction, transmissionProbability),
         evolution([0,      0, recoveryRate, parValues[8]],  timeList[4], timeList[5], totalPopulation, symptomaticFraction, transmissionProbability),
         evolution([0,      0, recoveryRate, parValues[9]],  timeList[5], timeList[6], totalPopulation, symptomaticFraction, transmissionProbability),
         evolution([0,      0, recoveryRate, parValues[10]], timeList[6], timeList[7], totalPopulation, symptomaticFraction, transmissionProbability)]
 
-    graphN = evolve.evolveGlobal(evolutions, evolutions[-1].tStop, parValues, True)
+    graphN = evolve.evolveGlobal(evolutions, evolutions[-1].tStop, parValues, True, True)
 
     if doSmearing == True:
         evolve.smearing()
@@ -518,23 +522,21 @@ def runToyMC(evolve, nEv, nToy, doSmearing):
 
 
 def runGlobalFit(country, active, totalPopulation, symptomaticFraction, transmissionProbability, recoveryRate, doSmearing):
-    scaleError = 3
-
-#    tStart = 0
-#    tStop  = 9+6+11+37 +20
-#    timeList = [9, 9+6, 9+6+11, tStop]
-    tStart = 9
+    tStart = 0
     tStop  = 9+6+11+37 +20
-    timeList = [9+6, 9+6+11, tStop]
+    timeList = [9, 9+6, 9+6+11, tStop]
+#    tStart = 9
+#    tStop  = 9+6+11+37 +20
+#    timeList = [9+6, 9+6+11, tStop]
 
     ntuple = [tStart, tStop, totalPopulation, symptomaticFraction, transmissionProbability, recoveryRate]
 
-    xValues    = [i                            for i in range(len(active.keys()))          if i >= tStart and i <= tStop]
-    yValues    = [active[k]                    for i,k in enumerate(sorted(active.keys())) if i >= tStart and i <= tStop]
-    erryValues = [sqrt(active[k]) * scaleError for i,k in enumerate(sorted(active.keys())) if i >= tStart and i <= tStop]
+    xValues    = [i         for i in range(len(active.keys()))          if i >= tStart and i <= tStop]
+    yValues    = [active[k] for i,k in enumerate(sorted(active.keys())) if i >= tStart and i <= tStop]
+    erryValues = assignErrors(yValues)
 
-#    ntuple.extend([0, xValues, yValues, erryValues, timeList, 223, 8870, 0.405, 0.318, 0.239, 0.172])
-    ntuple.extend([0, xValues, yValues, erryValues, timeList, 2640, 51800, 0.318, 0.239, 0.172])
+    ntuple.extend([0, xValues, yValues, erryValues, timeList, 223, 8870, 0.405, 0.318, 0.239, 0.161])
+#    ntuple.extend([0, xValues, yValues, erryValues, timeList, 2640, 51800, 0.318, 0.239, 0.161])
 
     evActive = evolution([ntuple[11], ntuple[12], recoveryRate, ntuple[13]], tStart, timeList[0], totalPopulation, symptomaticFraction, transmissionProbability)
     evolutions = [evolution([0, 0, recoveryRate, ntuple[14+i]], timeList[i], timeList[i+1], totalPopulation, symptomaticFraction, transmissionProbability) for i in range(len(timeList)-1)]
@@ -544,16 +546,16 @@ def runGlobalFit(country, active, totalPopulation, symptomaticFraction, transmis
     myGraphActive = TGraphErrors()
     myGraphActive.SetMarkerStyle(20)
 
-    for k in sorted(active.keys()):
-        myGraphActive.SetPoint(myGraphActive.GetN(), myGraphActive.GetN(), active[k])
-        myGraphActive.SetPointError(myGraphActive.GetN()-1, 0, sqrt(active[k]) * scaleError)
-    myGraphActive.SetPoint(myGraphActive.GetN(), tStop, 0)
-    myGraphActive.SetPointError(myGraphActive.GetN()-1, 0, 0)
+    for i in range(len(xValues)):
+        myGraphActive.SetPoint(myGraphActive.GetN(), xValues[i], yValues[i])
+        myGraphActive.SetPointError(myGraphActive.GetN()-1, 0, erryValues[i])
     myGraphActive.Draw('APE1')
     myGraphActive.GetHistogram().GetXaxis().SetTitle('Time (days)')
     myGraphActive.GetHistogram().GetYaxis().SetTitle('Active cases affected by CoViD-19')
 
     evActive.evolveGlobal(evolutions, evolutions[-1].tStop, parValues, True)
+    if doSmearing == True:
+        evActive.smearing()
     evActiveGraphN = evActive.getGraphN()
     evActiveGraphN.Draw('PL same')
     statActive = evActive.addStats(parNames, parValues)
@@ -605,7 +607,7 @@ def runGlobalFit(country, active, totalPopulation, symptomaticFraction, transmis
 ######################
 SetStyle()
 
-#graphModel = runModel(60e6, 0.3, 4.7e-3, 0.023, True)
+graphModel = runModel(60e6, 0.3, 4.7e-3, 0.023, False)
 
 ##################################
 # Read data from database: Italy #
@@ -619,14 +621,14 @@ active    = readDataFromFile(fileName,  6)
 recovered = readDataFromFile(fileName,  9)
 deaths    = readDataFromFile(fileName, 10)
 total     = readDataFromFile(fileName, 11)
-#graphItaly = analyzeData('Italy', total, active, recovered, deaths, 27, 100, 60e6, 0.3, 4.7e-3, 0.023)
+#graphItaly = analyzeData('Italy', total, active, recovered, deaths, 27, 100, 60e6, 0.3, 4.7e-3, 0.023, False)
 
 #graphItaly[3].cd()
 #graphModel[3].Draw('same')
-#graphScan = scanParameter(graphItaly[0], 10, 0.001, 0.02, False, False)
-#graphToy = runToyMC(graphItaly[5], 3340564, 10, False)
+#graphScan = scanParameter(graphItaly[0], 100, 0.001, 0.02, False, False)
+#graphToy = runToyMC(graphItaly[5], 3340564, 400, False)
 
-graphGlobalFit = runGlobalFit('Italy', active, 60e6, 0.3, 4.7e-3, 0.023, True)
+#graphGlobalFit = runGlobalFit('Italy', active, 60e6, 0.3, 5.5e-3, 0.023, True)
 #graphGlobalScan = scanParameter(graphGlobalFit[0], 400, 0.001, 0.02, False, True)
 
 """
@@ -656,7 +658,7 @@ recovered = readDataFromFile(fileNameRecovered, -1, country, province)
 active    = {}
 for k in sorted(total.keys()):
     active[k] = total[k] - deaths[k] - recovered[k]
-graphWorld = analyzeData(country, total, active, recovered, deaths, 22, 100, 60e6, 0.3, 4.7e-3, 0.031)
+graphWorld = analyzeData(country, total, active, recovered, deaths, 22, 100, 60e6, 0.3, 4.8e-3, 0.031, False)
 """
 
 raw_input('\nPress <ret> to end -> ')

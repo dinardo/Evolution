@@ -62,7 +62,7 @@ class evolution(object):
         historyActiveDt = self.historyActiveDt / self.symptomaticFraction
         if doLookUp == True:
             self.lookUpTable = np.zeros(int(round(T/self.dt,1)) + 1)
-            self.bins = [self.tStart + i * self.dt for i in range(int(round((self.tStop - self.tStart)/self.dt,1)) + 1)]
+            self.bins = [self.tStart + i * self.dt for i in range(len(self.lookUpTable))]
 
         for n in range(int(round(T/self.dt,1))):
             if doLookUp == True:
@@ -87,7 +87,7 @@ class evolution(object):
     def evolveGlobalWrapper(self, t, par):
         return self.evolveGlobal(self.evolutions, t[0], par)[0]
 
-    def evolveGlobal(self, evolutions, t, par, doLookUp = False):
+    def evolveGlobal(self, evolutions, t, par, doLookUp = False, doDefaults = False):
         self.parValues[0] = par[0]
         self.parValues[1] = par[1]
         self.parValues[2] = par[2]
@@ -105,10 +105,8 @@ class evolution(object):
             return [active, historyActiveDt, Pinf, CC]
 
         for i,ev in enumerate(evolutions):
-            ev.parValues[0] = active
-            ev.parValues[1] = CC
-#            ev.parValues[0] = active if ev.parValues[0] == 0 else ev.parValues[0]
-#            ev.parValues[1] = CC     if ev.parValues[1] == 0 else ev.parValues[1]
+            ev.parValues[0] = ev.parValues[0] if doDefaults == True and ev.parValues[0] != 0. else active
+            ev.parValues[1] = ev.parValues[1] if doDefaults == True and ev.parValues[1] != 0. else CC
             ev.parValues[2] = par[2]
             ev.parValues[3] = par[4+i]
             ev.historyActiveDt = historyActiveDt
