@@ -607,7 +607,7 @@ def runGlobalFit(country, active, totalPopulation, symptomaticFraction, transmis
 ######################
 SetStyle()
 
-graphModel = runModel(60e6, 0.3, 5.5e-3, 0.023, True)
+#graphModel = runModel(60e6, 0.3, 5.5e-3, 0.023, True)
 
 ##################################
 # Read data from database: Italy #
@@ -621,7 +621,7 @@ active    = readDataFromFile(fileName,  6)
 recovered = readDataFromFile(fileName,  9)
 deaths    = readDataFromFile(fileName, 10)
 total     = readDataFromFile(fileName, 11)
-#graphItaly = analyzeData('Italy', total, active, recovered, deaths, 27, 100, 60e6, 0.3, 4.7e-3, 0.023, False)
+graphItaly = analyzeData('Italy', total, active, recovered, deaths, 27, 100, 60e6, 0.3, 4.7e-3, 0.023, False)
 
 #graphItaly[3].cd()
 #graphModel[3].Draw('same')
