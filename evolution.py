@@ -352,7 +352,10 @@ class evolution(object):
     def smearing(self, mean = 1.4, sigma = 0.3):
         nSigma = 100.
         g = [self.logNormal(i * self.dt, mean, sigma) for i in range(int(round(nSigma * sigma / self.dt,1)))]
+        intro = np.ones(int(round(nSigma * sigma / self.dt,1))) * self.lookUpTable[0]
+        self.lookUpTable = np.concatenate([intro, self.lookUpTable])
         self.lookUpTable = np.convolve(self.lookUpTable, g) * self.dt
+        self.lookUpTable = self.lookUpTable[len(intro):]
         self.bins = [self.tStart + i * self.dt for i in range(len(self.lookUpTable))]
 
     def logNormal(self, x, mean, sigma):
