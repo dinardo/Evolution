@@ -39,10 +39,12 @@ class evolution(object):
         self.bins = []
 
         self.funLookUp = TF1('EvolutionLookUp', self.evolveLookUpWrapper, self.tStart, self.tStop, len(self.parNames))
-        self.setFitFun(self.evolveWrapper, self.tStart, self.tStop, self.parNames)
+        self.setFitFun(self.evolveWrapper, self.tStart, self.tStop, self.parNames, self.parValues)
 
-    def setFitFun(self, fun, tStart, tStop, parNames):
+    def setFitFun(self, fun, tStart, tStop, parNames, parValues):
         self.fitFun = TF1('Evolution', fun, tStart, tStop, len(parNames))
+        for i,value in enumerate(parValues):
+            self.fitFun.SetParameter(i, value)
 
     def evolveLookUpWrapper(self, t, par):
         return self.evolveLookUp(t[0])
@@ -51,7 +53,7 @@ class evolution(object):
         return self.lookUpTable[np.digitize([t], self.bins)[0] - 1]
 
     def evolveWrapper(self, t, par):
-        return self.evolve(t[0], par)[0]
+        return self.evolve(t[0], par)[0] if t[0] >= self.tStart else self.reverseEvolve(t[0], par)[0]
 
     def evolve(self, t, par, doLookUp = False):
         T   = t - self.tStart
@@ -83,6 +85,31 @@ class evolution(object):
             self.lookUpTable[int(round(T/self.dt,1))] = N * self.symptomaticFraction
 
         return [N * self.symptomaticFraction, historyActiveDt * self.symptomaticFraction, (totalInfected / CCn) if CCn != 0. else 0., CC]
+
+    def reverseEvolve(self, t, par, doLookUp = False):
+        T  = self.tStart - t
+        N  = par[0] / self.symptomaticFraction
+        CC = par[1]
+        totalInfected = 0.
+        historyActiveDt = self.historyActiveDt / self.symptomaticFraction
+        lookUpTable = []
+        if doLookUp == True:
+            lookUpTable = np.zeros(int(round(T/self.dt,1)))
+
+        for n in range(int(round(T/self.dt,1))):
+            totalInfected = N + historyActiveDt * par[2]
+            g = par[3] * (1. - totalInfected / CC)
+
+            Nn = N
+            N  -= self.dt * N * (g - par[2])
+            CC -= self.dt * par[3] / self.transmissionProbability * (Nn - N * (1. - self.dt * par[2])) * (1. - CC / self.totalPopulation)
+
+            historyActiveDt -= Nn * self.dt
+
+            if doLookUp == True:
+                lookUpTable[len(lookUpTable) - n - 1] = N * self.symptomaticFraction
+
+        return N * self.symptomaticFraction, lookUpTable
 
     def evolveGlobalWrapper(self, t, par):
         return self.evolveGlobal(self.evolutions, t[0], par)[0]
@@ -264,9 +291,8 @@ class evolution(object):
             self.fitErrLo[i] = float(errLo)
             self.fitErrHi[i] = float(errHi)
 
-        self.setFitFun(self.evolveGlobalWrapper, self.tStart, evolutions[-1].tStop, parNames)
-        for i,value in enumerate(parValues):
-            self.fitFun.SetParameter(i, value)
+        self.setFitFun(self.evolveGlobalWrapper, self.tStart, evolutions[-1].tStop, parNames, parValues)
+
         return istat, parValues, parNames
 
     def addStats(self, parNames, parValues):
@@ -351,10 +377,9 @@ class evolution(object):
 
     def smearing(self, mean = 1.4, sigma = 0.3):
         nSigma = 100.
-        nDaysBack = 3.
 
         g = [self.logNormal(i * self.dt, mean, sigma) for i in range(int(round(nSigma * sigma / self.dt,1)))]
-        intro = np.ones(int(round(nDaysBack / self.dt,1))) * self.lookUpTable[0]
+        N, intro = self.reverseEvolve(self.tStart - nSigma * sigma, self.parValues, True)
         self.lookUpTable = np.concatenate([intro, self.lookUpTable])
         self.lookUpTable = np.convolve(self.lookUpTable, g) * self.dt
         self.lookUpTable = self.lookUpTable[len(intro):]

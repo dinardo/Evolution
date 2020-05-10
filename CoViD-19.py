@@ -373,7 +373,8 @@ def runModel(totalPopulation, symptomaticFraction, transmissionProbability, reco
     myGraphTmp2 = TGraph()
 
     timeList  = [9, 9+6, 9+6+11, 9+6+11+43, 9+6+11+43+60, 9+6+11+43+60+30, 9+6+11+43+60+30+60, 9+6+11+43+60+30+60 +120]
-    parValues = [223, 8870, recoveryRate, 0.405, 0.318, 0.239, 0.161, 0.405, 0.161, 0.405, 0.161]
+#    parValues = [223, 8870, recoveryRate, 0.405, 0.318, 0.239, 0.161, 0.405, 0.161, 0.405, 0.161]
+    parValues = [825, 8210, recoveryRate, 0.467, 0.457, 0.377, 0.238, 0.377, 0.238, 0.377, 0.238]
 
     myCanvModels.cd(1)
     myGraphTmp1.SetPoint(myGraphTmp1.GetN(), 0, 0)
@@ -393,9 +394,13 @@ def runModel(totalPopulation, symptomaticFraction, transmissionProbability, reco
 
     evolve = evolution(parValues[0:4], 0, timeList[0], totalPopulation, symptomaticFraction, transmissionProbability)
     evolutions = [
-        evolution([0,  51800, recoveryRate, parValues[4]],  timeList[0], timeList[1], totalPopulation, symptomaticFraction, transmissionProbability),
-        evolution([0, 211000, recoveryRate, parValues[5]],  timeList[1], timeList[2], totalPopulation, symptomaticFraction, transmissionProbability),
-        evolution([0, 419000, recoveryRate, parValues[6]],  timeList[2], timeList[3], totalPopulation, symptomaticFraction, transmissionProbability),
+#        evolution([0,  51800, recoveryRate, parValues[4]],  timeList[0], timeList[1], totalPopulation, symptomaticFraction, transmissionProbability),
+#        evolution([0, 211000, recoveryRate, parValues[5]],  timeList[1], timeList[2], totalPopulation, symptomaticFraction, transmissionProbability),
+#        evolution([0, 419000, recoveryRate, parValues[6]],  timeList[2], timeList[3], totalPopulation, symptomaticFraction, transmissionProbability),
+        evolution([0,      0, recoveryRate, parValues[4]],  timeList[0], timeList[1], totalPopulation, symptomaticFraction, transmissionProbability),
+        evolution([0,      0, recoveryRate, parValues[5]],  timeList[1], timeList[2], totalPopulation, symptomaticFraction, transmissionProbability),
+        evolution([0,      0, recoveryRate, parValues[6]],  timeList[2], timeList[3], totalPopulation, symptomaticFraction, transmissionProbability),
+
         evolution([0,      0, recoveryRate, parValues[7]],  timeList[3], timeList[4], totalPopulation, symptomaticFraction, transmissionProbability),
         evolution([0,      0, recoveryRate, parValues[8]],  timeList[4], timeList[5], totalPopulation, symptomaticFraction, transmissionProbability),
         evolution([0,      0, recoveryRate, parValues[9]],  timeList[5], timeList[6], totalPopulation, symptomaticFraction, transmissionProbability),
@@ -525,9 +530,6 @@ def runGlobalFit(country, active, totalPopulation, symptomaticFraction, transmis
     tStart = 0
     tStop  = 9+6+11+37 +20
     timeList = [9, 9+6, 9+6+11, tStop]
-#    tStart = 9
-#    tStop  = 9+6+11+37 +20
-#    timeList = [9+6, 9+6+11, tStop]
 
     ntuple = [tStart, tStop, totalPopulation, symptomaticFraction, transmissionProbability, recoveryRate]
 
@@ -535,8 +537,7 @@ def runGlobalFit(country, active, totalPopulation, symptomaticFraction, transmis
     yValues    = [active[k] for i,k in enumerate(sorted(active.keys())) if i >= tStart and i <= tStop]
     erryValues = assignErrors(yValues)
 
-    ntuple.extend([0, xValues, yValues, erryValues, timeList, 223, 8870, 0.405, 0.318, 0.239, 0.161])
-#    ntuple.extend([0, xValues, yValues, erryValues, timeList, 2640, 51800, 0.318, 0.239, 0.161])
+    ntuple.extend([0, xValues, yValues, erryValues, timeList, 820, 8700, 0.459, 0.457, 0.378, 0.237])
 
     evActive = evolution([ntuple[11], ntuple[12], recoveryRate, ntuple[13]], tStart, timeList[0], totalPopulation, symptomaticFraction, transmissionProbability)
     evolutions = [evolution([0, 0, recoveryRate, ntuple[14+i]], timeList[i], timeList[i+1], totalPopulation, symptomaticFraction, transmissionProbability) for i in range(len(timeList)-1)]
@@ -607,7 +608,7 @@ def runGlobalFit(country, active, totalPopulation, symptomaticFraction, transmis
 ######################
 SetStyle()
 
-#graphModel = runModel(60e6, 0.3, 5.5e-3, 0.023, True)
+graphModel = runModel(60e6, 0.3, 5.5e-3, 0.023, True)
 
 ##################################
 # Read data from database: Italy #
@@ -615,13 +616,13 @@ SetStyle()
 print '=== Downloading data ==='
 url      = 'https://raw.githubusercontent.com/pcm-dpc/COVID-19/master/dati-andamento-nazionale/dpc-covid19-ita-andamento-nazionale.csv'
 fileName = url.split('/')[-1]
-saveDataFromURL(url)
+#saveDataFromURL(url)
 print '=== Done ===\n'
 active    = readDataFromFile(fileName,  6)
 recovered = readDataFromFile(fileName,  9)
 deaths    = readDataFromFile(fileName, 10)
 total     = readDataFromFile(fileName, 11)
-graphItaly = analyzeData('Italy', total, active, recovered, deaths, 27, 100, 60e6, 0.3, 4.7e-3, 0.023, False)
+#graphItaly = analyzeData('Italy', total, active, recovered, deaths, 27, 100, 60e6, 0.3, 4.7e-3, 0.023, False)
 
 #graphItaly[3].cd()
 #graphModel[3].Draw('same')
