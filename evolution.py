@@ -102,9 +102,12 @@ class evolution(object):
 
             Nn = N
             N  -= self.dt * N * (g - par[2])
-            CC -= self.dt * par[3] / self.transmissionProbability * (Nn - N * (1. - self.dt * par[2])) * (1. - CC / self.totalPopulation)
+            CC -= self.dt * par[3] / self.transmissionProbability * (N - Nn * (1. - self.dt * par[2])) * (1. - CC / self.totalPopulation)
 
-            historyActiveDt -= Nn * self.dt
+            if Nn * self.dt > historyActiveDt:
+                historyActiveDt -= Nn * self.dt
+            else:
+                historyActiveDt = 0.
 
             if doLookUp == True:
                 lookUpTable[len(lookUpTable) - n - 1] = N * self.symptomaticFraction
