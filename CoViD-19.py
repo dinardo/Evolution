@@ -374,7 +374,7 @@ def runModel(totalPopulation, symptomaticFraction, transmissionProbability, reco
 
     timeList  = [9, 9+6, 9+6+11, 9+6+11+43, 9+6+11+43+60, 9+6+11+43+60+30, 9+6+11+43+60+30+60, 9+6+11+43+60+30+60 +120]
 #    parValues = [223, 8870, recoveryRate, 0.405, 0.318, 0.239, 0.161, 0.405, 0.161, 0.405, 0.161]
-    parValues = [825, 8210, recoveryRate, 0.467, 0.457, 0.377, 0.238, 0.377, 0.238, 0.377, 0.238]
+    parValues = [862, 7290, recoveryRate, 0.480, 0.457, 0.377, 0.238, 0.377, 0.238, 0.377, 0.238]
 
     myCanvModels.cd(1)
     myGraphTmp1.SetPoint(myGraphTmp1.GetN(), 0, 0)
