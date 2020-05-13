@@ -374,7 +374,7 @@ def runModel(totalPopulation, symptomaticFraction, transmissionProbability, reco
 
     timeList  = [9, 9+6, 9+6+11, 9+6+11+43, 9+6+11+43+60, 9+6+11+43+60+30, 9+6+11+43+60+30+60, 9+6+11+43+60+30+60 +120]
 #    parValues = [223, 8870, recoveryRate, 0.405, 0.318, 0.239, 0.161, 0.405, 0.161, 0.405, 0.161]
-    parValues = [2110, 12000, recoveryRate, 0.491, 0.442, 0.330, 0.233, 0.330, 0.233, 0.330, 0.233]
+    parValues = [2180, 11100, recoveryRate, 0.546, 0.492, 0.373, 0.284, 0.373, 0.284, 0.373, 0.284]
 
     myCanvModels.cd(1)
     myGraphTmp1.SetPoint(myGraphTmp1.GetN(), 0, 0)
@@ -634,7 +634,7 @@ total     = readDataFromFile(fileName, 11)
 #graphToy = runToyMC(graphItaly[5], 3340564, 400, False)
 
 graphGlobalFit = runGlobalFit('Italy', active, 60e6, 0.3, 6.5e-3, 0.023, True)
-graphGlobalScan = scanParameter(graphGlobalFit[0], 400, 0.001, 0.02, True, True)
+#graphGlobalScan = scanParameter(graphGlobalFit[0], 400, 0.001, 0.02, True, True)
 
 """
 ##################################
