@@ -246,6 +246,7 @@ def analyzeData(country, total, active, recovered, deaths, tStart, tStop, totalP
     myCanvRatio02.Update()
 
     print '==> Doubling time:', round(log(2)/evActive.parValues[3],1), 'days'
+    print '==> Herd immunity from:', round(100. * (1. - evActive.parValues[2] / evActive.parValues[3])), '% infected'
 
     return [ntuple,
             myCanvTotal,   myGraphTotal,
@@ -626,14 +627,14 @@ active    = readDataFromFile(fileName,  6)
 recovered = readDataFromFile(fileName,  9)
 deaths    = readDataFromFile(fileName, 10)
 total     = readDataFromFile(fileName, 11)
-#graphItaly = analyzeData('Italy', total, active, recovered, deaths, 27, 100, 60e6, 0.3, 4.7e-3, 0.023, False)
+graphItaly = analyzeData('Italy', total, active, recovered, deaths, 27, 100, 60e6, 0.3, 4.7e-3, 0.023, False)
 
 #graphItaly[3].cd()
 #graphModel[3].Draw('same')
 #graphScan = scanParameter(graphItaly[0], 100, 0.001, 0.02, False, False)
 #graphToy = runToyMC(graphItaly[5], 3340564, 400, False)
 
-graphGlobalFit = runGlobalFit('Italy', active, 60e6, 0.3, 6.5e-3, 0.023, True)
+#graphGlobalFit = runGlobalFit('Italy', active, 60e6, 0.3, 6.5e-3, 0.023, True)
 #graphGlobalScan = scanParameter(graphGlobalFit[0], 400, 0.001, 0.02, True, True)
 
 """
