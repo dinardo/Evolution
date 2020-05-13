@@ -13,7 +13,7 @@ from ROOT import TMinuit, Long, Double, TString, TPaveText, TGraph, TF1
 class evolution(object):
     def __init__(self, parValues, tStart, tStop, totalPopulation,
                  symptomaticFraction     = 0.3,
-                 transmissionProbability = 4.7e-3,
+                 transmissionProbability = 6.5e-3,
                  historyActiveDt         = 0.):
 
         self.parNames  = ['Initial population', 'Carrying capacity', 'Recovery rate', 'Growth rate']
@@ -378,7 +378,7 @@ class evolution(object):
 
         return graphP
 
-    def smearing(self, mean = 1.4, sigma = 0.3):
+    def smearing(self, mean = 2.0, sigma = 0.3):
         nSigma = 100.
 
         g = [self.logNormal(i * self.dt, mean, sigma) for i in range(int(round(nSigma * sigma / self.dt,1)))]
