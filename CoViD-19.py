@@ -121,7 +121,10 @@ def analyzeData(country, total, active, recovered, deaths, tStart, tStop, totalP
     evActiveGraphN.Draw('PL same')
     statActive = evActive.addStats(evActive.parNames, evActive.parValues)
 
-    print '==> Active cases, history active cases * dt, p-infected, Carrying capacity', evActive.evolve(tStop, evActive.parValues), '@', tStop, 'day'
+    tStop = 2000 # @TMP@
+    print '==> Active cases, history active cases, p-infected, Carrying capacity', evActive.evolve(tStop, evActive.parValues), '@', tStop, 'day'
+    print '==> Percentage population with antibodies', round(100. * evActive.totalInfected(tStop) / totalPopulation), '% at day', tStop, '(herd immunity at', evActive.herdImmunity(), '%)'
+    print '==> Doubling time:', round(log(2.)/evActive.parValues[3],1), 'days'
 
     now = TLine(len(active)-1, 0, len(active)-1, evActive.fitFun.Eval(len(active)-1))
     now.SetLineColor(4)
@@ -245,8 +248,6 @@ def analyzeData(country, total, active, recovered, deaths, tStart, tStop, totalP
     myCanvRatio02.Modified()
     myCanvRatio02.Update()
 
-    print '==> Doubling time:', round(log(2)/evActive.parValues[3],1), 'days'
-    print '==> Herd immunity from:', round(100. * (1. - evActive.parValues[2] / evActive.parValues[3])), '% infected'
 
     return [ntuple,
             myCanvTotal,   myGraphTotal,
@@ -407,6 +408,10 @@ def runModel(totalPopulation, symptomaticFraction, transmissionProbability, reco
         evolution([0,      0, recoveryRate, parValues[9]],  timeList[5], timeList[6], totalPopulation, symptomaticFraction, transmissionProbability),
         evolution([0,      0, recoveryRate, parValues[10]], timeList[6], timeList[7], totalPopulation, symptomaticFraction, transmissionProbability)]
 
+    evolve.evolveGlobal(evolutions, evolutions[-1].tStop, parValues, True, True)
+
+    for t in timeList:
+        print '==> Percentage population with antibodies', round(100. * evolve.totalInfectedGlobal(evolutions, t, parValues) / evolve.totalPopulation), '%, at day', t, '(herd immunity at', evolve.herdImmunityGlobal(evolutions, t, parValues), '%)'
     graphN = evolve.evolveGlobal(evolutions, evolutions[-1].tStop, parValues, True, True)
 
     if doSmearing == True:
@@ -627,7 +632,7 @@ active    = readDataFromFile(fileName,  6)
 recovered = readDataFromFile(fileName,  9)
 deaths    = readDataFromFile(fileName, 10)
 total     = readDataFromFile(fileName, 11)
-graphItaly = analyzeData('Italy', total, active, recovered, deaths, 27, 100, 60e6, 0.3, 4.7e-3, 0.023, False)
+graphItaly = analyzeData('Italy', total, active, recovered, deaths, 27, 400, 60e6, 0.3, 4.7e-3, 0.023, False)
 
 #graphItaly[3].cd()
 #graphModel[3].Draw('same')

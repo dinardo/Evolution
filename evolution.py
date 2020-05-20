@@ -4,7 +4,7 @@
 #################################################
 
 from array   import array
-from math    import sqrt, log, exp, factorial, pi
+from math    import sqrt, log, exp, pow, pi
 from decimal import *
 import numpy as np
 
@@ -45,6 +45,9 @@ class evolution(object):
         self.fitFun = TF1('Evolution', fun, tStart, tStop, len(parNames))
         for i,value in enumerate(parValues):
             self.fitFun.SetParameter(i, value)
+
+    def rescaleTime(self, val):
+        return pow(1 + val, self.dt) - 1
 
     def evolveLookUpWrapper(self, t, par):
         return self.evolveLookUp(t[0])
@@ -122,7 +125,7 @@ class evolution(object):
         self.parValues[1] = par[1]
         self.parValues[2] = par[2]
         self.parValues[3] = par[3]
-        T = 0
+        T = 0.
 
         if t <= self.tStop:
             T = t
@@ -155,10 +158,27 @@ class evolution(object):
                 return [active, historyActiveDt, Pinf, CC]
 
     def totalInfected(self, up2Time):
-        return self.evolve(up2Time, self.parValues)[0] + self.totalRecovered(up2Time)
+        return self.evolve(up2Time, self.parValues)[0] / self.symptomaticFraction + self.totalRecovered(up2Time)
+
+    def totalInfectedGlobal(self, evolutions, up2Time, parValues):
+        return self.evolveGlobal(evolutions, up2Time, parValues)[0] / self.symptomaticFraction + self.totalRecoveredGlobal(evolutions, up2Time, parValues)
 
     def totalRecovered(self, up2Time):
-        return (self.historyActiveDt + self.evolve(up2Time, self.parValues)[1]) * self.parValues[2]
+        return (self.historyActiveDt + self.evolve(up2Time, self.parValues)[1]) / self.symptomaticFraction * self.parValues[2]
+
+    def totalRecoveredGlobal(self, evolutions, up2Time, parValues):
+        return (self.historyActive + self.evolveGlobal(evolutions, up2Time, parValues)[1]) / self.symptomaticFraction * self.parValues[2]
+
+    def herdImmunity(self):
+        return round(100. * (1. - self.parValues[2] / self.parValues[3]))
+
+    def herdImmunityGlobal(self, evolutions, t, par):
+         if t <= self.tStop:
+             return round(100. * (1. - self.parValues[2] / self.parValues[3]))
+         else:
+             for ev in evolutions:
+                 if t <= ev.tStop:
+                     return round(100. * (1. - ev.parValues[2] / ev.parValues[3]))
 
     def costFunction(self, npar, grad, fval, par, iflag):
         self.nMeas, self.chi2, delta = 0., 0., 0.
