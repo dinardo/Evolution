@@ -180,7 +180,7 @@ class evolution(object):
     def costFunction(self, npar, grad, fval, par, iflag):
         self.nMeas, self.chi2, delta = 0., 0., 0.
 
-        self.evolve(self.xValues[len(self.xValues)-1], par, True)
+        self.evolve(self.xValues[-1], par, True)
         if self.doSmearing == True:
             self.smearing()
 
@@ -195,7 +195,7 @@ class evolution(object):
     def costFunctionGlobal(self, npar, grad, fval, par, iflag):
         self.nMeas, self.chi2, delta = 0., 0., 0.
 
-        self.evolveGlobal(self.evolutions, self.xValues[len(self.xValues)-1], par, True)
+        self.evolveGlobal(self.evolutions, self.xValues[-1], par, True)
         if self.doSmearing == True:
             self.smearing()
 

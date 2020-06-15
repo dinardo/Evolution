@@ -551,7 +551,7 @@ def runGlobalFit(country, active, totalPopulation, symptomaticFraction, transmis
     myGraphActive.GetHistogram().GetXaxis().SetTitle('Time (days)')
     myGraphActive.GetHistogram().GetYaxis().SetTitle('Active cases affected by CoViD-19')
 
-    ntuple.extend([0, xValues, yValues, erryValues, timeList, 1800, 10000, 0.550, 0.500, 0.370, 0.290])
+    ntuple.extend([0, xValues, yValues, erryValues, timeList, 2200, 11000, 0.550, 0.490, 0.370, 0.280])
 
     evActive = evolution([ntuple[11], ntuple[12], recoveryRate, ntuple[13]], tStart, timeList[0], totalPopulation, symptomaticFraction, transmissionProbability)
     evolutions = [evolution([0, 0, recoveryRate, ntuple[14+i]], timeList[i], timeList[i+1], totalPopulation, symptomaticFraction, transmissionProbability) for i in range(len(timeList)-1)]
@@ -626,14 +626,14 @@ active    = readDataFromFile(fileName,  6)
 recovered = readDataFromFile(fileName,  9)
 deaths    = readDataFromFile(fileName, 10)
 total     = readDataFromFile(fileName, 11)
-#graphItaly = analyzeData('Italy', total, active, recovered, deaths, 0, 100, 60e6, 0.3, 0.26, 0.023, False)
+#graphItaly = analyzeData('Italy', total, active, recovered, deaths, 27, 100, 60e6, 0.3, 0.26, 0.023, False)
 
 #graphItaly[3].cd()
 #graphModel[3].Draw('same')
 #graphScan = scanParameter(graphItaly[0], 400, 0.0, 0.5, False, False)
 #graphToy = runToyMC(graphItaly[5], 3340564, 400, False)
 
-graphGlobalFit = runGlobalFit('Italy', active, 60e6, 0.3, 0.33, 0.023, True)
+graphGlobalFit = runGlobalFit('Italy', active, 60e6, 0.3, 0.40, 0.023, True)
 #graphGlobalScan = scanParameter(graphGlobalFit[0], 100, 0.0, 0.5, True, True)
 
 """
