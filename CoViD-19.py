@@ -373,8 +373,9 @@ def runModel(totalPopulation, symptomaticFraction, transmissionProbability, reco
     myGraphTmp1 = TGraph()
     myGraphTmp2 = TGraph()
 
-    timeList  = [9, 9+6, 9+6+12, 9+6+12+43, 9+6+12+43+60, 9+6+12+43+60+30, 9+6+12+43+60+30+60, 9+6+12+43+60+30+60 +120]
+    timeList  = [9, 9+6, 9+6+12, 9+6+12+43, 9+6+12+43+60, 9+6+12+43+60+30, 9+6+12+43+60+30+60, 9+6+12+43+60+30+60 +1200]
     parValues = [220, 8460, recoveryRate, 0.415, 0.324, 0.228, 0.175, 0.415, 0.175, 0.415, 0.175]
+#    parValues = [1890, 16100, recoveryRate, 0.435, 0.438, 0.308, 0.216, 0.308, 0.216, 0.308, 0.216]
 
     myCanvModels.cd(1)
     myGraphTmp1.SetPoint(myGraphTmp1.GetN(), 0, 0)
@@ -397,6 +398,10 @@ def runModel(totalPopulation, symptomaticFraction, transmissionProbability, reco
         evolution([0,  50600, recoveryRate, parValues[4]],  timeList[0], timeList[1], totalPopulation, symptomaticFraction, transmissionProbability),
         evolution([0, 248000, recoveryRate, parValues[5]],  timeList[1], timeList[2], totalPopulation, symptomaticFraction, transmissionProbability),
         evolution([0, 406000, recoveryRate, parValues[6]],  timeList[2], timeList[3], totalPopulation, symptomaticFraction, transmissionProbability),
+#        evolution([0,      0, recoveryRate, parValues[4]],  timeList[0], timeList[1], totalPopulation, symptomaticFraction, transmissionProbability),
+#        evolution([0,      0, recoveryRate, parValues[5]],  timeList[1], timeList[2], totalPopulation, symptomaticFraction, transmissionProbability),
+#        evolution([0,      0, recoveryRate, parValues[6]],  timeList[2], timeList[3], totalPopulation, symptomaticFraction, transmissionProbability),
+
         evolution([0,      0, recoveryRate, parValues[7]],  timeList[3], timeList[4], totalPopulation, symptomaticFraction, transmissionProbability),
         evolution([0,      0, recoveryRate, parValues[8]],  timeList[4], timeList[5], totalPopulation, symptomaticFraction, transmissionProbability),
         evolution([0,      0, recoveryRate, parValues[9]],  timeList[5], timeList[6], totalPopulation, symptomaticFraction, transmissionProbability),
@@ -418,18 +423,18 @@ def runModel(totalPopulation, symptomaticFraction, transmissionProbability, reco
     myCanvModels.cd(2)
     graphR0.Draw('L same')
     """
-    evolve1 = evolution([200, 8900, recoveryRate, 0.17], 0, 1000, totalPopulation, symptomaticFraction, transmissionProbability)
+    evolve1 = evolution([220, 8500, recoveryRate, 0.17], 0, 800, totalPopulation, symptomaticFraction, transmissionProbability)
     evolve1.evolve(evolve1.tStop, evolve1.parValues, True)
     graph1 = evolve1.getGraphN()
     graph1.Draw('L same')
 
-    evolve2 = evolution([200, 8900, 0.023, 0.17], 0, 1000, 60e6, 0.3, 0.26)
+    evolve2 = evolution([220, 8500, 0.023, 0.17], 0, 800, 60e6, 0.3, 0.26)
     evolve2.evolve(evolve2.tStop, evolve2.parValues, True)
     graph2 = evolve2.getGraphN()
     graph2.SetLineColor(4)
     graph2.Draw('L same')
 
-    evolve3 = evolution([200, 8900, 0.023, 0.17], 0, 1000, 60e6, 0.3, 0.26)
+    evolve3 = evolution([220, 8500, 0.023, 0.17], 0, 800, 60e6, 0.3, 0.26)
     evolve3.evolve(evolve3.tStop, evolve3.parValues, True)
     graph3 = evolve3.getGraphN()
     graph3.SetLineColor(1)
@@ -451,7 +456,7 @@ def runToyMC(evolve, nEv, nToy, doSmearing):
     xValues = [evolve.tStart + i for i in range(nBins)]
     nSigma  = 6
 
-    histo01 = TH1D('Histo01', evolve.parNames[0], 100, 10, 40)
+    histo01 = TH1D('Histo01', evolve.parNames[0], 100, 0, 30)
     histo01.GetXaxis().SetTitle('Pulls ' + evolve.parNames[0])
     histo01.GetYaxis().SetTitle('Entries')
 
@@ -551,7 +556,7 @@ def runGlobalFit(country, active, totalPopulation, symptomaticFraction, transmis
     myGraphActive.GetHistogram().GetXaxis().SetTitle('Time (days)')
     myGraphActive.GetHistogram().GetYaxis().SetTitle('Active cases affected by CoViD-19')
 
-    ntuple.extend([0, xValues, yValues, erryValues, timeList, 2200, 11000, 0.550, 0.490, 0.370, 0.280])
+    ntuple.extend([0, xValues, yValues, erryValues, timeList, 820, 6000, 0.450, 0.350, 0.300, 0.200])
 
     evActive = evolution([ntuple[11], ntuple[12], recoveryRate, ntuple[13]], tStart, timeList[0], totalPopulation, symptomaticFraction, transmissionProbability)
     evolutions = [evolution([0, 0, recoveryRate, ntuple[14+i]], timeList[i], timeList[i+1], totalPopulation, symptomaticFraction, transmissionProbability) for i in range(len(timeList)-1)]
@@ -603,8 +608,9 @@ def runGlobalFit(country, active, totalPopulation, symptomaticFraction, transmis
     myCanvActiveP.Modified()
     myCanvActiveP.Update()
 
+
     return [ntuple,
-            myCanvActive,  myGraphActive, evActive, evActiveGraphN, statActive, now, willbe, myCanvActiveR0, evActiveGraphR0, myCanvActiveP, evActiveGraphP]
+            myCanvActive, myGraphActive, evActive, evActiveGraphN, statActive, now, willbe, myCanvActiveR0, evActiveGraphR0, myCanvActiveP, evActiveGraphP]
 
 
 ######################
@@ -626,14 +632,14 @@ active    = readDataFromFile(fileName,  6)
 recovered = readDataFromFile(fileName,  9)
 deaths    = readDataFromFile(fileName, 10)
 total     = readDataFromFile(fileName, 11)
-#graphItaly = analyzeData('Italy', total, active, recovered, deaths, 27, 100, 60e6, 0.3, 0.26, 0.023, False)
+#graphItaly = analyzeData('Italy', total, active, recovered, deaths, 27, 69, 60e6, 0.3, 0.26, 0.023, False)
 
 #graphItaly[3].cd()
 #graphModel[3].Draw('same')
 #graphScan = scanParameter(graphItaly[0], 400, 0.0, 0.5, False, False)
-#graphToy = runToyMC(graphItaly[5], 3340564, 400, False)
+#graphToy = runToyMC(graphItaly[5], 3878532, 20, False)
 
-graphGlobalFit = runGlobalFit('Italy', active, 60e6, 0.3, 0.40, 0.023, True)
+graphGlobalFit = runGlobalFit('Italy', active, 60e6, 0.3, 0.26, 0.023, True)
 #graphGlobalScan = scanParameter(graphGlobalFit[0], 100, 0.0, 0.5, True, True)
 
 """
