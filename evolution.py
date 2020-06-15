@@ -13,7 +13,7 @@ from ROOT import TMinuit, Long, Double, TString, TPaveText, TGraph, TF1
 class evolution(object):
     def __init__(self, parValues, tStart, tStop, totalPopulation,
                  symptomaticFraction     = 0.3,
-                 transmissionProbability = 6.5e-3,
+                 transmissionProbability = 0.26,
                  historyActiveDt         = 0.):
 
         self.parNames  = ['Initial population', 'Carrying capacity', 'Recovery rate', 'Growth rate']
@@ -46,9 +46,6 @@ class evolution(object):
         for i,value in enumerate(parValues):
             self.fitFun.SetParameter(i, value)
 
-    def rescaleTime(self, val):
-        return pow(1 + val, self.dt) - 1
-
     def evolveLookUpWrapper(self, t, par):
         return self.evolveLookUp(t[0])
 
@@ -80,7 +77,7 @@ class evolution(object):
             N += self.dt * N * (g - par[2])
 
             CCn = CC
-            CC += self.dt * par[3] / self.transmissionProbability * (N - Nn * (1. - self.dt * par[2])) * (1. - CC / self.totalPopulation)
+            CC += self.dt * par[3] / self.transmissionProbability * (Nn * g) * (1. - CC / self.totalPopulation)
 
             historyActiveDt += Nn * self.dt
 
@@ -105,7 +102,7 @@ class evolution(object):
 
             Nn = N
             N  -= self.dt * N * (g - par[2])
-            CC -= self.dt * par[3] / self.transmissionProbability * (N - Nn * (1. - self.dt * par[2])) * (1. - CC / self.totalPopulation)
+            CC -= self.dt * par[3] / self.transmissionProbability * (Nn * g) * (1. - CC / self.totalPopulation)
 
             if Nn * self.dt > historyActiveDt:
                 historyActiveDt -= Nn * self.dt
@@ -167,7 +164,7 @@ class evolution(object):
         return (self.historyActiveDt + self.evolve(up2Time, self.parValues)[1]) / self.symptomaticFraction * self.parValues[2]
 
     def totalRecoveredGlobal(self, evolutions, up2Time, parValues):
-        return (self.historyActive + self.evolveGlobal(evolutions, up2Time, parValues)[1]) / self.symptomaticFraction * self.parValues[2]
+        return (self.historyActiveDt + self.evolveGlobal(evolutions, up2Time, parValues)[1]) / self.symptomaticFraction * self.parValues[2]
 
     def herdImmunity(self):
         return round(100. * (1. - self.parValues[2] / self.parValues[3]))
@@ -401,10 +398,10 @@ class evolution(object):
     def smearing(self, mean = 2.0, sigma = 0.3):
         nSigma = 100.
 
-        g = [self.logNormal(i * self.dt, mean, sigma) for i in range(int(round(nSigma * sigma / self.dt,1)))]
+        ln = [self.logNormal(i * self.dt, mean, sigma) for i in range(int(round(nSigma * sigma / self.dt,1)))]
         N, intro = self.reverseEvolve(self.tStart - nSigma * sigma, self.parValues, True)
         self.lookUpTable = np.concatenate([intro, self.lookUpTable])
-        self.lookUpTable = np.convolve(self.lookUpTable, g) * self.dt
+        self.lookUpTable = np.convolve(self.lookUpTable, ln) * self.dt
         self.lookUpTable = self.lookUpTable[len(intro):]
         self.bins = [self.tStart + i * self.dt for i in range(len(self.lookUpTable))]
 
