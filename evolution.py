@@ -12,11 +12,12 @@ from ROOT import TMinuit, Long, Double, TString, TPaveText, TGraph, TF1
 
 class evolution(object):
     def __init__(self, parValues, tStart, tStop, totalPopulation,
+                 recoveryRate            = 0.023,
                  symptomaticFraction     = 0.3,
                  transmissionProbability = 0.26,
                  historyActiveDt         = 0.):
 
-        self.parNames  = ['Initial population', 'Carrying capacity', 'Recovery rate', 'Growth rate']
+        self.parNames  = ['Initial population', 'Carrying capacity', 'Growth rate']
         self.parValues = parValues
 
         self.tStart = tStart
@@ -27,6 +28,7 @@ class evolution(object):
         # Model parameters #
         ####################
         self.totalPopulation         = totalPopulation
+        self.recoveryRate            = recoveryRate
         self.symptomaticFraction     = symptomaticFraction
         self.transmissionProbability = transmissionProbability
         self.historyActiveDt         = historyActiveDt
@@ -70,14 +72,14 @@ class evolution(object):
             if doLookUp == True:
                 self.lookUpTable[n] = N * self.symptomaticFraction
 
-            totalInfected = N + historyActiveDt * par[2]
-            g = par[3] * (1. - totalInfected / CC)
+            totalInfected = N + historyActiveDt * self.recoveryRate
+            g = par[2] * (1. - totalInfected / CC)
 
             Nn = N
-            N += self.dt * N * (g - par[2])
+            N += self.dt * N * (g - self.recoveryRate)
 
             CCn = CC
-            CC += self.dt * par[3] / self.transmissionProbability * (Nn * g) * (1. - CC / self.totalPopulation)
+            CC += self.dt * par[2] / self.transmissionProbability * (Nn * g) * (1. - CC / self.totalPopulation)
 
             historyActiveDt += Nn * self.dt
 
@@ -97,12 +99,12 @@ class evolution(object):
             lookUpTable = np.zeros(int(round(T/self.dt,1)))
 
         for n in range(int(round(T/self.dt,1))):
-            totalInfected = N + historyActiveDt * par[2]
-            g = par[3] * (1. - totalInfected / CC)
+            totalInfected = N + historyActiveDt * self.recoveryRate
+            g = par[2] * (1. - totalInfected / CC)
 
             Nn = N
-            N  -= self.dt * N * (g - par[2])
-            CC -= self.dt * par[3] / self.transmissionProbability * (Nn * g) * (1. - CC / self.totalPopulation)
+            N  -= self.dt * N * (g - self.recoveryRate)
+            CC -= self.dt * par[2] / self.transmissionProbability * (Nn * g) * (1. - CC / self.totalPopulation)
 
             if Nn * self.dt > historyActiveDt:
                 historyActiveDt -= Nn * self.dt
@@ -121,7 +123,6 @@ class evolution(object):
         self.parValues[0] = par[0]
         self.parValues[1] = par[1]
         self.parValues[2] = par[2]
-        self.parValues[3] = par[3]
         T = 0.
 
         if t <= self.tStop:
@@ -137,8 +138,7 @@ class evolution(object):
         for i,ev in enumerate(evolutions):
             ev.parValues[0] = ev.parValues[0] if doDefaults == True and ev.parValues[0] != 0. else active
             ev.parValues[1] = ev.parValues[1] if doDefaults == True and ev.parValues[1] != 0. else CC
-            ev.parValues[2] = par[2]
-            ev.parValues[3] = par[4+i]
+            ev.parValues[2] = par[3+i]
             ev.historyActiveDt = historyActiveDt
 
             if t <= ev.tStop:
@@ -161,21 +161,21 @@ class evolution(object):
         return self.evolveGlobal(evolutions, up2Time, parValues)[0] / self.symptomaticFraction + self.totalRecoveredGlobal(evolutions, up2Time, parValues)
 
     def totalRecovered(self, up2Time):
-        return (self.historyActiveDt + self.evolve(up2Time, self.parValues)[1]) / self.symptomaticFraction * self.parValues[2]
+        return (self.historyActiveDt + self.evolve(up2Time, self.parValues)[1]) / self.symptomaticFraction * self.recoveryRate
 
     def totalRecoveredGlobal(self, evolutions, up2Time, parValues):
-        return (self.historyActiveDt + self.evolveGlobal(evolutions, up2Time, parValues)[1]) / self.symptomaticFraction * self.parValues[2]
+        return (self.historyActiveDt + self.evolveGlobal(evolutions, up2Time, parValues)[1]) / self.symptomaticFraction * self.recoveryRate
 
     def herdImmunity(self):
-        return round(100. * (1. - self.parValues[2] / self.parValues[3]))
+        return round(100. * (1. - self.recoveryRate / self.parValues[2]))
 
     def herdImmunityGlobal(self, evolutions, t, par):
          if t <= self.tStop:
-             return round(100. * (1. - self.parValues[2] / self.parValues[3]))
+             return round(100. * (1. - self.recoveryRate / self.parValues[2]))
          else:
              for ev in evolutions:
                  if t <= ev.tStop:
-                     return round(100. * (1. - ev.parValues[2] / ev.parValues[3]))
+                     return round(100. * (1. - ev.recoveryRate / ev.parValues[2]))
 
     def costFunction(self, npar, grad, fval, par, iflag):
         self.nMeas, self.chi2, delta = 0., 0., 0.
@@ -286,15 +286,14 @@ class evolution(object):
         self.evolutions = evolutions
         self.doSmearing = doSmearing
 
-        parNames = ['Initial population', 'Carrying capacity', 'Recovery rate', 'Growth rate-0']
+        parNames = ['Initial population', 'Carrying capacity', 'Growth rate-0']
         parNames.extend(['Growth rate-' + str(i+1) for i in range(len(evolutions))])
         parValues = [0 for i in range(len(parNames))]
         parValues[0] = self.parValues[0]
         parValues[1] = self.parValues[1]
         parValues[2] = self.parValues[2]
-        parValues[3] = self.parValues[3]
         for i,ev in enumerate(self.evolutions):
-            parValues[4+i] = ev.parValues[3]
+            parValues[3+i] = ev.parValues[2]
 
         gMinuit, istat = self.prepareAndRunOptimizer(xValues, yValues, erryValues, fixParams, self.costFunctionGlobal, parValues, parNames, printOutLevel)
 
@@ -351,8 +350,8 @@ class evolution(object):
         graphR0 = TGraph()
 
         for i in range(graphN.GetN() - 1):
-            if Decimal(graphN.GetY()[i] * self.parValues[2]) != 0:
-                graphR0.SetPoint(graphR0.GetN(), graphN.GetX()[i], Decimal((graphN.GetY()[i+1] - graphN.GetY()[i]) / self.dt) / Decimal(graphN.GetY()[i] * self.parValues[2]) + 1)
+            if Decimal(graphN.GetY()[i] * self.recoveryRate) != 0:
+                graphR0.SetPoint(graphR0.GetN(), graphN.GetX()[i], Decimal((graphN.GetY()[i+1] - graphN.GetY()[i]) / self.dt) / Decimal(graphN.GetY()[i] * self.recoveryRate) + 1)
             else:
                 graphR0.SetPoint(graphR0.GetN(), graphN.GetX()[i], 0)
 

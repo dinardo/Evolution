@@ -112,8 +112,8 @@ def analyzeData(country, total, active, recovered, deaths, tStart, tStop, totalP
     ntuple.extend([historyActive, xValues, yValues, erryValues])
     print '==> History active cases:', historyActive
 
-    evActive = evolution([yValues[0], carryingCapacity, recoveryRate, growthRate], tStart, tStop, totalPopulation, symptomaticFraction, transmissionProbability, historyActive)
-    evActive.runOptimization(xValues, yValues, erryValues, [2], doSmearing)
+    evActive = evolution([yValues[0], carryingCapacity, growthRate], tStart, tStop, totalPopulation, recoveryRate, symptomaticFraction, transmissionProbability, historyActive)
+    evActive.runOptimization(xValues, yValues, erryValues, [], doSmearing)
     evActive.evolve(evActive.tStop, evActive.parValues, True)
     if doSmearing == True:
         evActive.smearing()
@@ -123,7 +123,7 @@ def analyzeData(country, total, active, recovered, deaths, tStart, tStop, totalP
 
     print '==> Active cases, history active cases, p-infected, Carrying capacity', evActive.evolve(tStop, evActive.parValues), '@', tStop, 'day'
     print '==> Percentage population with antibodies', round(100. * evActive.totalInfected(tStop) / totalPopulation), '% at day', tStop, '(herd immunity at', evActive.herdImmunity(), '%)'
-    print '==> Doubling time:', round(log(2.)/evActive.parValues[3],1), 'days'
+    print '==> Doubling time:', round(log(2.)/evActive.parValues[2],1), 'days'
 
     now = TLine(len(active)-1, 0, len(active)-1, evActive.fitFun.Eval(len(active)-1))
     now.SetLineColor(4)
@@ -312,27 +312,27 @@ def scanParameter(ntuple, N, minVal, maxVal, doSmearing, doGlobalFit):
         transmissionProbability = val
 
         if doGlobalFit == False:
-            evolve = evolution([yValues[0], carryingCapacity, recoveryRate, growthRate], tStart, tStop, totalPopulation, symptomaticFraction, transmissionProbability, historyActive)
-            status = evolve.runOptimization(xValues, yValues, erryValues, [2], doSmearing, -1)
+            evolve = evolution([yValues[0], carryingCapacity, growthRate], tStart, tStop, totalPopulation, recoveryRate, symptomaticFraction, transmissionProbability, historyActive)
+            status = evolve.runOptimization(xValues, yValues, erryValues, [], doSmearing, -1)
 
             if status == 3:
-                histo.     Fill(evolve.parValues[3])
+                histo.     Fill(evolve.parValues[2])
                 scatter.   Fill(val, evolve.chi2/evolve.dof)
-                scatterPar.Fill(val, evolve.parValues[3])
+                scatterPar.Fill(val, evolve.parValues[2])
                 scatterC0. Fill(val, evolve.parValues[1])
                 scatterCn. Fill(val, evolve.evolve(tStop, evolve.parValues)[3])
         else:
             timeList = ntuple[10]
 
-            evolve = evolution([ntuple[11], ntuple[12], recoveryRate, ntuple[13]], tStart, timeList[0], totalPopulation, symptomaticFraction, transmissionProbability)
-            evolutions = [evolution([0, 0, recoveryRate, ntuple[14+i]], timeList[i], timeList[i+1], totalPopulation, symptomaticFraction, transmissionProbability) for i in range(len(timeList)-1)]
+            evolve = evolution([ntuple[11], ntuple[12], ntuple[13]], tStart, timeList[0], totalPopulation, recoveryRate, symptomaticFraction, transmissionProbability)
+            evolutions = [evolution([0, 0, ntuple[14+i]], timeList[i], timeList[i+1], totalPopulation, recoveryRate, symptomaticFraction, transmissionProbability) for i in range(len(timeList)-1)]
 
-            status, parValues, parNames = evolve.runGlobalOptimization(evolutions, xValues, yValues, erryValues, [2], doSmearing, -1)
+            status, parValues, parNames = evolve.runGlobalOptimization(evolutions, xValues, yValues, erryValues, [], doSmearing, -1)
 
             if status == 3:
-                histo.     Fill(parValues[3])
+                histo.     Fill(parValues[2])
                 scatter.   Fill(val, evolve.chi2/evolve.dof)
-                scatterPar.Fill(val, parValues[3])
+                scatterPar.Fill(val, parValues[2])
                 scatterC0. Fill(val, parValues[1])
 
     myCanv01 = TCanvas('myCanv01','Histogram')
@@ -373,9 +373,11 @@ def runModel(totalPopulation, symptomaticFraction, transmissionProbability, reco
     myGraphTmp1 = TGraph()
     myGraphTmp2 = TGraph()
 
-    timeList  = [9, 9+6, 9+6+12, 9+6+12+43, 9+6+12+43+60, 9+6+12+43+60+30, 9+6+12+43+60+30+60, 9+6+12+43+60+30+60 +1200]
-    parValues = [220, 8460, recoveryRate, 0.415, 0.324, 0.228, 0.175, 0.415, 0.175, 0.415, 0.175]
-#    parValues = [1890, 16100, recoveryRate, 0.435, 0.438, 0.308, 0.216, 0.308, 0.216, 0.308, 0.216]
+#    timeList  = [9, 9+6, 9+6+12, 9+6+12+42, 9+6+12+42 +60, 9+6+12+42 +60+30, 9+6+12+42 +60+30+60, 9+6+12+42 +60+30+60 +300]
+#    parValues = [220, 8460, 0.415, 0.324, 0.228, 0.175, 0.415, 0.175, 0.415, 0.175]
+#    parValues = [1890, 16100, 0.435, 0.438, 0.308, 0.216, 0.308, 0.216, 0.308, 0.216]
+    timeList  = [9, 9+6, 9+6+12, 9+6+12+42, 9+6+12+42 +60]
+    parValues = [1890, 16100, 0.435, 0.438, 0.308, 0.216, 0.400]
 
     myCanvModels.cd(1)
     myGraphTmp1.SetPoint(myGraphTmp1.GetN(), 0, 0)
@@ -393,19 +395,21 @@ def runModel(totalPopulation, symptomaticFraction, transmissionProbability, reco
     myGraphTmp2.GetXaxis().SetTitle('Time (days)')
     myGraphTmp2.GetYaxis().SetTitle('R')
 
-    evolve = evolution(parValues[0:4], 0, timeList[0], totalPopulation, symptomaticFraction, transmissionProbability)
+    evolve = evolution(parValues[0:3], 0, timeList[0], totalPopulation, recoveryRate, symptomaticFraction, transmissionProbability)
     evolutions = [
-        evolution([0,  50600, recoveryRate, parValues[4]],  timeList[0], timeList[1], totalPopulation, symptomaticFraction, transmissionProbability),
-        evolution([0, 248000, recoveryRate, parValues[5]],  timeList[1], timeList[2], totalPopulation, symptomaticFraction, transmissionProbability),
-        evolution([0, 406000, recoveryRate, parValues[6]],  timeList[2], timeList[3], totalPopulation, symptomaticFraction, transmissionProbability),
-#        evolution([0,      0, recoveryRate, parValues[4]],  timeList[0], timeList[1], totalPopulation, symptomaticFraction, transmissionProbability),
-#        evolution([0,      0, recoveryRate, parValues[5]],  timeList[1], timeList[2], totalPopulation, symptomaticFraction, transmissionProbability),
-#        evolution([0,      0, recoveryRate, parValues[6]],  timeList[2], timeList[3], totalPopulation, symptomaticFraction, transmissionProbability),
+#        evolution([0,  50600, parValues[4]],  timeList[0], timeList[1], totalPopulation, recoveryRate, symptomaticFraction, transmissionProbability),
+#        evolution([0, 248000, parValues[5]],  timeList[1], timeList[2], totalPopulation, recoveryRate, symptomaticFraction, transmissionProbability),
+#        evolution([0, 406000, parValues[6]],  timeList[2], timeList[3], totalPopulation, recoveryRate, symptomaticFraction, transmissionProbability),
+        evolution([0,      0, parValues[3]],  timeList[0], timeList[1], totalPopulation, recoveryRate, symptomaticFraction, transmissionProbability),
+        evolution([0,      0, parValues[4]],  timeList[1], timeList[2], totalPopulation, recoveryRate, symptomaticFraction, transmissionProbability),
+        evolution([0,      0, parValues[5]],  timeList[2], timeList[3], totalPopulation, recoveryRate, symptomaticFraction, transmissionProbability),
 
-        evolution([0,      0, recoveryRate, parValues[7]],  timeList[3], timeList[4], totalPopulation, symptomaticFraction, transmissionProbability),
-        evolution([0,      0, recoveryRate, parValues[8]],  timeList[4], timeList[5], totalPopulation, symptomaticFraction, transmissionProbability),
-        evolution([0,      0, recoveryRate, parValues[9]],  timeList[5], timeList[6], totalPopulation, symptomaticFraction, transmissionProbability),
-        evolution([0,      0, recoveryRate, parValues[10]], timeList[6], timeList[7], totalPopulation, symptomaticFraction, transmissionProbability)]
+        evolution([0,      0, parValues[6]],  timeList[3], timeList[4], totalPopulation, 0.027, symptomaticFraction, transmissionProbability)] # Test overlap with data after lockdown
+
+#        evolution([0,      0, parValues[6]],  timeList[3], timeList[4], totalPopulation, recoveryRate, symptomaticFraction, transmissionProbability),
+#        evolution([0,      0, parValues[7]],  timeList[4], timeList[5], totalPopulation, recoveryRate, symptomaticFraction, transmissionProbability),
+#        evolution([0,      0, parValues[8]],  timeList[5], timeList[6], totalPopulation, recoveryRate, symptomaticFraction, transmissionProbability),
+#        evolution([0,      0, parValues[9]], timeList[6], timeList[7], totalPopulation, recoveryRate, symptomaticFraction, transmissionProbability)]
 
     evolve.evolveGlobal(evolutions, evolutions[-1].tStop, parValues, True, True)
 
@@ -423,18 +427,18 @@ def runModel(totalPopulation, symptomaticFraction, transmissionProbability, reco
     myCanvModels.cd(2)
     graphR0.Draw('L same')
     """
-    evolve1 = evolution([220, 8500, recoveryRate, 0.17], 0, 800, totalPopulation, symptomaticFraction, transmissionProbability)
+    evolve1 = evolution([220, 8500, 0.17], 0, 800, totalPopulation, recoveryRate, symptomaticFraction, transmissionProbability)
     evolve1.evolve(evolve1.tStop, evolve1.parValues, True)
     graph1 = evolve1.getGraphN()
     graph1.Draw('L same')
 
-    evolve2 = evolution([220, 8500, 0.023, 0.17], 0, 800, 60e6, 0.3, 0.26)
+    evolve2 = evolution([220, 8500, 0.17], 0, 800, 60e6, 0.023, 0.3, 0.26)
     evolve2.evolve(evolve2.tStop, evolve2.parValues, True)
     graph2 = evolve2.getGraphN()
     graph2.SetLineColor(4)
     graph2.Draw('L same')
 
-    evolve3 = evolution([220, 8500, 0.023, 0.17], 0, 800, 60e6, 0.3, 0.26)
+    evolve3 = evolution([220, 8500, 0.17], 0, 800, 60e6, 0.023, 0.3, 0.26)
     evolve3.evolve(evolve3.tStop, evolve3.parValues, True)
     graph3 = evolve3.getGraphN()
     graph3.SetLineColor(1)
@@ -468,10 +472,6 @@ def runToyMC(evolve, nEv, nToy, doSmearing):
     histo03.GetXaxis().SetTitle('Pulls ' + evolve.parNames[2])
     histo03.GetYaxis().SetTitle('Entries')
 
-    histo04 = TH1D('Histo04', evolve.parNames[3], 100, -nSigma, nSigma)
-    histo04.GetXaxis().SetTitle('Pulls ' + evolve.parNames[3])
-    histo04.GetYaxis().SetTitle('Entries')
-
     for i in range(nToy):
         print '\n==> Toy number:', i
         yValues = [0. for i in range(nBins)]
@@ -493,12 +493,11 @@ def runToyMC(evolve, nEv, nToy, doSmearing):
                           evolve.symptomaticFraction,
                           evolve.transmissionProbability,
                           evolve.historyActiveDt)
-        evToy.runOptimization(xValues, yValues, erryValues, [2], doSmearing, -1)
+        evToy.runOptimization(xValues, yValues, erryValues, [], doSmearing, -1)
 
         histo01.Fill(((evToy.parValues[0] - evolve.parValues[0]) / evToy.fitErr[0]) if evToy.fitErr[0] != 0 else 0)
         histo02.Fill(((evToy.parValues[1] - evolve.parValues[1]) / evToy.fitErr[1]) if evToy.fitErr[1] != 0 else 0)
         histo03.Fill(((evToy.parValues[2] - evolve.parValues[2]) / evToy.fitErr[2]) if evToy.fitErr[2] != 0 else 0)
-        histo04.Fill(((evToy.parValues[3] - evolve.parValues[3]) / evToy.fitErr[3]) if evToy.fitErr[3] != 0 else 0)
 
     canv01 = TCanvas('Canv01','Pulls ' + evolve.parNames[0])
     histo01.Draw()
@@ -518,21 +517,14 @@ def runToyMC(evolve, nEv, nToy, doSmearing):
     canv03.Modified()
     canv03.Update()
 
-    canv04 = TCanvas('Canv04','Pulls ' + evolve.parNames[3])
-    histo04.Draw()
-    histo04.Fit('gaus')
-    canv04.Modified()
-    canv04.Update()
-
     return [canv01, histo01,
             canv02, histo02,
-            canv03, histo03,
-            canv04, histo04]
+            canv03, histo03]
 
 
 def runGlobalFit(country, active, totalPopulation, symptomaticFraction, transmissionProbability, recoveryRate, doSmearing):
     tStart = 0
-    tStop  = 9+6+12+42 +20
+    tStop  = 9+6+12+42 +60
     timeList = [9, 9+6, 9+6+12, tStop]
 
     ntuple = [tStart, tStop, totalPopulation, symptomaticFraction, transmissionProbability, recoveryRate]
@@ -556,11 +548,11 @@ def runGlobalFit(country, active, totalPopulation, symptomaticFraction, transmis
     myGraphActive.GetHistogram().GetXaxis().SetTitle('Time (days)')
     myGraphActive.GetHistogram().GetYaxis().SetTitle('Active cases affected by CoViD-19')
 
-    ntuple.extend([0, xValues, yValues, erryValues, timeList, 820, 6000, 0.450, 0.350, 0.300, 0.200])
+    ntuple.extend([0, xValues, yValues, erryValues, timeList, 1894, 16052, 0.450, 0.350, 0.300, 0.200])
 
-    evActive = evolution([ntuple[11], ntuple[12], recoveryRate, ntuple[13]], tStart, timeList[0], totalPopulation, symptomaticFraction, transmissionProbability)
-    evolutions = [evolution([0, 0, recoveryRate, ntuple[14+i]], timeList[i], timeList[i+1], totalPopulation, symptomaticFraction, transmissionProbability) for i in range(len(timeList)-1)]
-    istat, parValues, parNames = evActive.runGlobalOptimization(evolutions, xValues, yValues, erryValues, [2], doSmearing)
+    evActive = evolution([ntuple[11], ntuple[12], ntuple[13]], tStart, timeList[0], totalPopulation, recoveryRate, symptomaticFraction, transmissionProbability)
+    evolutions = [evolution([0, 0, ntuple[14+i]], timeList[i], timeList[i+1], totalPopulation, recoveryRate, symptomaticFraction, transmissionProbability) for i in range(len(timeList)-1)]
+    istat, parValues, parNames = evActive.runGlobalOptimization(evolutions, xValues, yValues, erryValues, [], doSmearing)
     evActive.evolveGlobal(evolutions, evolutions[-1].tStop, parValues, True)
     if doSmearing == True:
         evActive.smearing()
@@ -618,7 +610,18 @@ def runGlobalFit(country, active, totalPopulation, symptomaticFraction, transmis
 ######################
 SetStyle()
 
-#graphModel = runModel(60e6, 0.3, 0.26, 0.023, False)
+
+#############
+# Constants #
+#############
+totalPopulation         = 60e6
+symptomaticFraction     = 0.3
+recoveryRate            = 0.023
+transmissionProbability = 0.26
+nFit                    = 1000
+doSmearing              = True
+doGlobalFit             = True
+
 
 ##################################
 # Read data from database: Italy #
@@ -626,21 +629,37 @@ SetStyle()
 print '=== Downloading data ==='
 url      = 'https://raw.githubusercontent.com/pcm-dpc/COVID-19/master/dati-andamento-nazionale/dpc-covid19-ita-andamento-nazionale.csv'
 fileName = url.split('/')[-1]
-#saveDataFromURL(url)
+saveDataFromURL(url)
 print '=== Done ===\n'
 active    = readDataFromFile(fileName,  6)
 recovered = readDataFromFile(fileName,  9)
 deaths    = readDataFromFile(fileName, 10)
 total     = readDataFromFile(fileName, 11)
-#graphItaly = analyzeData('Italy', total, active, recovered, deaths, 27, 69, 60e6, 0.3, 0.26, 0.023, False)
 
-#graphItaly[3].cd()
+
+##############
+# Plot model #
+##############
+graphModel = runModel(totalPopulation, symptomaticFraction, transmissionProbability, recoveryRate, doSmearing)
+
+
+##########################
+# Single-period analysis #
+##########################
+#graphLocal = analyzeData('Italy', total, active, recovered, deaths, 27, 119, totalPopulation, symptomaticFraction, transmissionProbability, recoveryRate, doSmearing)
+#graphLocal[3].cd()
 #graphModel[3].Draw('same')
-#graphScan = scanParameter(graphItaly[0], 400, 0.0, 0.5, False, False)
-#graphToy = runToyMC(graphItaly[5], 3878532, 20, False)
+#graphScan = scanParameter(graphLocal[0], nFit, 0.0, 0.5, doSmearing, doGlobalFit)
+#graphToy = runToyMC(graphLocal[5], 3878532, nFit, doSmearing)
 
-graphGlobalFit = runGlobalFit('Italy', active, 60e6, 0.3, 0.26, 0.023, True)
-#graphGlobalScan = scanParameter(graphGlobalFit[0], 100, 0.0, 0.5, True, True)
+
+#########################
+# Multi-period analysis #
+#########################
+graphGlobalFit = runGlobalFit('Italy', active, totalPopulation, symptomaticFraction, transmissionProbability, recoveryRate, doSmearing)
+graphGlobalFit[1].cd()
+graphModel[3].Draw('same')
+#graphGlobalScan = scanParameter(graphGlobalFit[0], nFit, 0.0, 1.0, doSmearing, doGlobalFit)
 
 """
 ##################################
@@ -669,7 +688,7 @@ recovered = readDataFromFile(fileNameRecovered, -1, country, province)
 active    = {}
 for k in sorted(total.keys()):
     active[k] = total[k] - deaths[k] - recovered[k]
-graphWorld = analyzeData(country, total, active, recovered, deaths, 22, 100, 60e6, 0.3, 0.26, 0.031, False)
+graphWorld = analyzeData(country, total, active, recovered, deaths, 22, 100, 60e6, 0.3, 0.26, 0.031, doSmearing)
 """
 
 raw_input('\nPress <ret> to end -> ')
