@@ -1,13 +1,13 @@
-import sys, urllib2
+import sys
+from urllib import request
 
 def saveDataFromURL(url):
     fileName = url.split('/')[-1]
-    urlID    = urllib2.urlopen(url)
+    urlID    = urllib.request.urlopen(url)
     fileID   = open(fileName,'wb')
-    meta     = urlID.info()
-    fileSize = int(meta.getheaders('Content-Length')[0])
+    fileSize = int(urlID.info()['Content-Length'])
 
-    print 'Downloading: {0:s} Bytes: {1:d}'.format(fileName, fileSize)
+    print('Downloading: {0:s} Bytes: {1:d}'.format(fileName, fileSize))
 
     reaoutSize = 0
     blockSize  = 8192
@@ -26,5 +26,5 @@ def saveDataFromURL(url):
         fileID.write(buffer)
         reaoutSize += len(buffer)
 
-    print ''
+    print('')
     fileID.close()

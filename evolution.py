@@ -5,10 +5,11 @@
 
 from array   import array
 from math    import sqrt, log, exp, pow, pi
+from ctypes  import c_int, c_double
 from decimal import *
 import numpy as np
 
-from ROOT import TMinuit, Long, Double, TString, TPaveText, TGraph, TF1
+from ROOT import TMinuit, TString, TPaveText, TGraph, TF1
 
 class evolution(object):
     def __init__(self, parValues, tStart, tStop, totalPopulation,
@@ -44,7 +45,8 @@ class evolution(object):
         self.setFitFun(self.evolveWrapper, self.tStart, self.tStop, self.parNames, self.parValues)
 
     def setFitFun(self, fun, tStart, tStop, parNames, parValues):
-        self.fitFun = TF1('Evolution', fun, tStart, tStop, len(parNames))
+        self.localFun = fun
+        self.fitFun = TF1('Evolution', self.localFun, tStart, tStop, len(parNames))
         for i,value in enumerate(parValues):
             self.fitFun.SetParameter(i, value)
 
@@ -75,11 +77,17 @@ class evolution(object):
             totalInfected = N + historyActiveDt * self.recoveryRate
             g = par[2] * (1. - totalInfected / CC)
 
+            if g < 0:
+                print('WARNING: negative growth rate coefficient')
+
             Nn = N
             N += self.dt * N * (g - self.recoveryRate)
 
             CCn = CC
             CC += self.dt * par[2] / self.transmissionProbability * (Nn * g) * (1. - CC / self.totalPopulation)
+
+            if CCn / self.totalPopulation > 1:
+                print('WARNING: negative carrying capacity coefficient')
 
             historyActiveDt += Nn * self.dt
 
@@ -102,9 +110,17 @@ class evolution(object):
             totalInfected = N + historyActiveDt * self.recoveryRate
             g = par[2] * (1. - totalInfected / CC)
 
+            if g < 0:
+                print('WARNING: negative growth rate coefficient')
+
             Nn = N
             N  -= self.dt * N * (g - self.recoveryRate)
+
+            CCn = CC
             CC -= self.dt * par[2] / self.transmissionProbability * (Nn * g) * (1. - CC / self.totalPopulation)
+
+            if CCn / self.totalPopulation > 1:
+                print('WARNING: negative carrying capacity coefficient')
 
             if Nn * self.dt > historyActiveDt:
                 historyActiveDt -= Nn * self.dt
@@ -190,7 +206,7 @@ class evolution(object):
                 self.chi2 += delta * delta
                 self.nMeas += 1
 
-        fval[0] = self.chi2
+        fval.value = self.chi2
 
     def costFunctionGlobal(self, npar, grad, fval, par, iflag):
         self.nMeas, self.chi2, delta = 0., 0., 0.
@@ -205,7 +221,7 @@ class evolution(object):
                 self.chi2 += delta * delta
                 self.nMeas += 1
 
-        fval[0] = self.chi2
+        fval.value = self.chi2
 
     def prepareAndRunOptimizer(self, xValues, yValues, erryValues, fixParams, optFunction, parValues, parNames, printOutLevel = 0):
         self.xValues    = xValues
@@ -220,7 +236,7 @@ class evolution(object):
         gMinuit.SetFCN(optFunction)
 
         arglist = array('d', nBins*[0])
-        ierflg  = Long(0)
+        ierflg  = c_int(0)
 
         arglist[0] = 1 # 1 for chi2, 0.5 for likelihood
         gMinuit.mnexcm('SET ERR', arglist, 1, ierflg)
@@ -251,11 +267,11 @@ class evolution(object):
 
         # Print results
         self.dof = self.nMeas - len(parValues) + len(self.fixParams)
-        fmin, fedm, errdef  = Double(0.), Double(0.), Double(0.)
-        npari, nparx, istat = Long(0), Long(0), Long(0)
+        fmin, fedm, errdef  = c_double(0.), c_double(0.), c_double(0.)
+        npari, nparx, istat = c_int(0), c_int(0), c_int(0)
         gMinuit.mnstat(fmin, fedm, errdef, npari, nparx, istat)
-        print '\nFMIN:', round(fmin,2), '\tFEDM:', round(fedm,2), '\tERRDEF:', errdef, '\tNPARI:', npari, '\tNPARX:', nparx, '\tISTAT:', istat
-        print 'chi-2:', round(self.chi2,2), '\td.o.f.:', self.dof, '\tchi-2/d.o.f.:', round(self.chi2/self.dof,2), '\n'
+        print('\nFMIN:', round(fmin.value,2), '\tFEDM:', '{:.1e}'.format(fedm.value), '\tERRDEF:', errdef.value, '\tNPARI:', npari.value, '\tNPARX:', nparx.value, '\tISTAT:', istat.value)
+        print('chi-2:', round(self.chi2,2), '\td.o.f.:', self.dof, '\tchi-2/d.o.f.:', round(self.chi2/self.dof,2), '\n')
 
         return gMinuit, istat
 
@@ -265,17 +281,17 @@ class evolution(object):
         gMinuit, istat = self.prepareAndRunOptimizer(xValues, yValues, erryValues, fixParams, self.costFunction, self.parValues, self.parNames, printOutLevel)
 
         # Extract parameters and errors
-        ierflg = Long(0)
-        val, err, errLo, errHi = Double(0.), Double(0.), Double(0.), Double(0.)
+        ierflg = c_int(0)
+        val, err, errLo, errHi = c_double(0.), c_double(0.), c_double(0.), c_double(0.)
         self.fitErr   = [0 for i in range(len(self.parValues))]
         self.fitErrLo = [0 for i in range(len(self.parValues))]
         self.fitErrHi = [0 for i in range(len(self.parValues))]
         for i in range(len(self.parValues)):
             gMinuit.mnpout(i, TString(''), val, err, errLo, errHi, ierflg)
-            self.parValues[i] = float(val)
-            self.fitErr[i]    = float(err)
-            self.fitErrLo[i]  = float(errLo)
-            self.fitErrHi[i]  = float(errHi)
+            self.parValues[i] = val.value
+            self.fitErr[i]    = err.value
+            self.fitErrLo[i]  = errLo.value
+            self.fitErrHi[i]  = errHi.value
 
         for i,value in enumerate(self.parValues):
             self.fitFun.SetParameter(i, value)
@@ -298,17 +314,17 @@ class evolution(object):
         gMinuit, istat = self.prepareAndRunOptimizer(xValues, yValues, erryValues, fixParams, self.costFunctionGlobal, parValues, parNames, printOutLevel)
 
         # Extract parameters and errors
-        ierflg = Long(0)
-        val, err, errLo, errHi = Double(0.), Double(0.), Double(0.), Double(0.)
+        ierflg = c_int(0)
+        val, err, errLo, errHi = c_double(0.), c_double(0.), c_double(0.), c_double(0.)
         self.fitErr   = [0 for i in range(len(parValues))]
         self.fitErrLo = [0 for i in range(len(parValues))]
         self.fitErrHi = [0 for i in range(len(parValues))]
         for i in range(len(parValues)):
             gMinuit.mnpout(i, TString(''), val, err, errLo, errHi, ierflg)
-            parValues[i]     = float(val)
-            self.fitErr[i]   = float(err)
-            self.fitErrLo[i] = float(errLo)
-            self.fitErrHi[i] = float(errHi)
+            parValues[i]     = val.value
+            self.fitErr[i]   = err.value
+            self.fitErrLo[i] = errLo.value
+            self.fitErrHi[i] = errHi.value
 
         self.setFitFun(self.evolveGlobalWrapper, self.tStart, evolutions[-1].tStop, parNames, parValues)
 
