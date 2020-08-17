@@ -3,7 +3,7 @@ from urllib import request
 
 def saveDataFromURL(url):
     fileName = url.split('/')[-1]
-    urlID    = urllib.request.urlopen(url)
+    urlID    = request.urlopen(url)
     fileID   = open(fileName,'wb')
     fileSize = int(urlID.info()['Content-Length'])
 
