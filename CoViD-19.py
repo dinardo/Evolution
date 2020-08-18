@@ -396,9 +396,11 @@ def scanParameter(ntuple, N, minVal, maxVal, doSmearing, doGlobalFit):
 
 def runModel(totalPopulation, symptomaticFraction, transmissionProbability, recoveryRate, doSmearing):
     myCanvModels = TCanvas('myCanvModels','Models')
-    myCanvModels.Divide(1,2)
+    myCanvModels.Divide(2,2)
     myGraphTmp1 = TGraph()
     myGraphTmp2 = TGraph()
+    myGraphTmp3 = TGraph()
+    myGraphTmp4 = TGraph()
 
     timeList  = [9, 9+6, 9+6+12, 9+6+12+42, 9+6+12+42 +61, 9+6+12+42 +61 +70, 9+6+12+42 +61 +70 +90]
     parValues = [1894, 16052, 0.435, 0.438, 0.308, 0.216, 0.050, 0.120, 0.435]
@@ -419,6 +421,22 @@ def runModel(totalPopulation, symptomaticFraction, transmissionProbability, reco
     myGraphTmp2.GetXaxis().SetTitle('Time (days)')
     myGraphTmp2.GetYaxis().SetTitle('R')
 
+    myCanvModels.cd(3)
+    myGraphTmp3.SetPoint(myGraphTmp3.GetN(), 0, 0)
+    myGraphTmp3.SetPoint(myGraphTmp3.GetN(), timeList[-1], 0)
+    myGraphTmp3.SetMarkerStyle(1)
+    myGraphTmp3.Draw()
+    myGraphTmp3.GetXaxis().SetTitle('Time (days)')
+    myGraphTmp3.GetYaxis().SetTitle('Probability of being infected')
+
+    myCanvModels.cd(4)
+    myGraphTmp4.SetPoint(myGraphTmp4.GetN(), 0, 0)
+    myGraphTmp4.SetPoint(myGraphTmp4.GetN(), timeList[-1], 0)
+    myGraphTmp4.SetMarkerStyle(1)
+    myGraphTmp4.Draw()
+    myGraphTmp4.GetXaxis().SetTitle('Time (days)')
+    myGraphTmp4.GetYaxis().SetTitle('Carrying capacity')
+
 
     ###################
     # Build the model #
@@ -438,14 +456,24 @@ def runModel(totalPopulation, symptomaticFraction, transmissionProbability, reco
 
     if doSmearing == True:
         evolve.smearing()
-    graphN = evolve.getGraphN()
 
-    graphR0 = evolve.getGraphR0(graphN)
+    graphN = evolve.getGraphN()
     graphN.SetLineColor(4)
     myCanvModels.cd(1)
     graphN.Draw('L same')
+
     myCanvModels.cd(2)
+    graphR0 = evolve.getGraphR0(graphN)
     graphR0.Draw('L same')
+
+    myCanvModels.cd(3)
+    graphP = evolve.getGraphGlobalPinfect(evolutions, parValues)
+    graphP.Draw('L same')
+
+    myCanvModels.cd(4)
+    graphCC = evolve.getGraphGlobalCarryingCapacity(evolutions, parValues)
+    graphCC.Draw('L same')
+
     """
     evolve1 = evolution([220, 8500, 0.17], 0, 800, totalPopulation, recoveryRate, symptomaticFraction, transmissionProbability)
     evolve1.evolve(evolve1.tStop, evolve1.parValues, True)
@@ -468,9 +496,9 @@ def runModel(totalPopulation, symptomaticFraction, transmissionProbability, reco
     myCanvModels.Modified()
     myCanvModels.Update()
 
-    return [myCanvModels, myGraphTmp1, myGraphTmp2,
+    return [myCanvModels, myGraphTmp1, myGraphTmp2, myGraphTmp3, myGraphTmp4,
 #            graph1, graph2, graph3]
-            graphN, graphR0]
+            graphN, graphR0, graphP, graphCC]
 
 
 def runToyMC(evolve, nEv, nToy, doSmearing):
@@ -690,7 +718,7 @@ graphModel = runModel(totalPopulation, symptomaticFraction, transmissionProbabil
 #########################
 graphGlobalFit = runGlobalFit('Italy', active, totalPopulation, symptomaticFraction, transmissionProbability, recoveryRate, doSmearing, doFit)
 graphGlobalFit[1].cd()
-graphModel[3].Draw('same')
+graphModel[5].Draw('same')
 #graphGlobalScan = scanParameter(graphGlobalFit[0], nFit, 0.0, 1.0, doSmearing, doGlobalFit)
 
 """

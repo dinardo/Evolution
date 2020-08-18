@@ -410,6 +410,36 @@ class evolution(object):
 
         return graphP
 
+    def getGraphCarryingCapacity(self):
+        graphCC = TGraph()
+
+        for i in range(1,int(round((self.tStop - self.tStart)/self.dt,1))):
+            graphCC.SetPoint(graphCC.GetN(), self.tStart + i * self.dt, self.evolve(self.tStart + i * self.dt, self.parValues)[3])
+
+        graphCC.SetLineColor(2)
+        graphCC.SetLineWidth(3)
+
+        graphCC.SetMarkerColor(2)
+        graphCC.SetMarkerSize(1.3)
+        graphCC.SetMarkerStyle(29)
+
+        return graphCC
+
+    def getGraphGlobalCarryingCapacity(self, evolutions, parValues):
+        graphCC = TGraph()
+
+        for i in range(1,int(round((evolutions[-1].tStop - self.tStart)/self.dt,1))):
+            graphCC.SetPoint(graphCC.GetN(), self.tStart + i * self.dt, self.evolveGlobal(evolutions, self.tStart + i * self.dt, parValues)[3])
+
+        graphCC.SetLineColor(2)
+        graphCC.SetLineWidth(3)
+
+        graphCC.SetMarkerColor(2)
+        graphCC.SetMarkerSize(1.3)
+        graphCC.SetMarkerStyle(29)
+
+        return graphCC
+
     def smearing(self, mean = 2.0, sigma = 0.3):
         nSigma = 100.
 
