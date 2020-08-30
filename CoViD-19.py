@@ -706,9 +706,9 @@ graphModel = runModel(totalPopulation, symptomaticFraction, transmissionProbabil
 ##########################
 # Single-period analysis #
 ##########################
-#graphLocal = analyzeData('Italy', total, active, recovered, deaths, 69, 130, totalPopulation, symptomaticFraction, transmissionProbability, recoveryRate, doSmearing, doFit)
-#graphLocal[3].cd()
-#graphModel[3].Draw('same')
+graphLocal = analyzeData('Italy', total, active, recovered, deaths, 69, 130, totalPopulation, symptomaticFraction, transmissionProbability, recoveryRate, doSmearing, doFit)
+graphLocal[3].cd()
+graphModel[3].Draw('same')
 #graphScan = scanParameter(graphLocal[0], nFit, 0.0, 0.5, doSmearing, doGlobalFit)
 #graphToy = runToyMC(graphLocal[5], 3878532, nFit, doSmearing)
 
@@ -716,9 +716,9 @@ graphModel = runModel(totalPopulation, symptomaticFraction, transmissionProbabil
 #########################
 # Multi-period analysis #
 #########################
-graphGlobalFit = runGlobalFit('Italy', active, totalPopulation, symptomaticFraction, transmissionProbability, recoveryRate, doSmearing, doFit)
-graphGlobalFit[1].cd()
-graphModel[5].Draw('same')
+#graphGlobalFit = runGlobalFit('Italy', active, totalPopulation, symptomaticFraction, transmissionProbability, recoveryRate, doSmearing, doFit)
+#graphGlobalFit[1].cd()
+#graphModel[5].Draw('same')
 #graphGlobalScan = scanParameter(graphGlobalFit[0], nFit, 0.0, 1.0, doSmearing, doGlobalFit)
 
 """

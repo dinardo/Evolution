@@ -16,7 +16,8 @@ class evolution(object):
                  recoveryRate            = 0.023,
                  symptomaticFraction     = 0.3,
                  transmissionProbability = 0.26,
-                 historyActiveDt         = 0.):
+                 historyActiveDt         = 0.,
+                 mortality               = 0.14):
 
         self.parNames  = ['Initial population', 'Carrying capacity', 'Growth rate']
         self.parValues = parValues
@@ -33,6 +34,7 @@ class evolution(object):
         self.symptomaticFraction     = symptomaticFraction
         self.transmissionProbability = transmissionProbability
         self.historyActiveDt         = historyActiveDt
+        self.mortality               = mortality
 
         self.dt = 0.02 # [Day]
 
@@ -64,6 +66,7 @@ class evolution(object):
         N   = par[0] / self.symptomaticFraction
         CC  = par[1]
         CCn = 0.
+        P   = self.totalPopulation
         totalInfected = 0.
         historyActiveDt = self.historyActiveDt / self.symptomaticFraction
         if doLookUp == True:
@@ -75,7 +78,7 @@ class evolution(object):
                 self.lookUpTable[n] = N * self.symptomaticFraction
 
             totalInfected = N + historyActiveDt * self.recoveryRate
-            g = par[2] * (1. - totalInfected / CC)
+            g = par[2] * (P / self.totalPopulation) * (1. - totalInfected / CC)
 
             if g < 0:
                 print('WARNING: negative growth rate coefficient')
@@ -84,9 +87,11 @@ class evolution(object):
             N += self.dt * N * (g - self.recoveryRate)
 
             CCn = CC
-            CC += self.dt * par[2] / self.transmissionProbability * (Nn * g) * (1. - CC / self.totalPopulation)
+            CC += self.dt * par[2] * (P / self.totalPopulation) / self.transmissionProbability * (Nn * g) * (1. - CC / P)
 
-            if CCn / self.totalPopulation > 1:
+            P += - self.dt * self.mortality * self.recoveryRate * Nn * P / self.totalPopulation
+
+            if CCn / P > 1:
                 print('WARNING: negative carrying capacity coefficient')
 
             historyActiveDt += Nn * self.dt
@@ -100,6 +105,7 @@ class evolution(object):
         T  = self.tStart - t
         N  = par[0] / self.symptomaticFraction
         CC = par[1]
+        P  = self.totalPopulation
         totalInfected = 0.
         historyActiveDt = self.historyActiveDt / self.symptomaticFraction
         lookUpTable = []
@@ -108,18 +114,20 @@ class evolution(object):
 
         for n in range(int(round(T/self.dt,1))):
             totalInfected = N + historyActiveDt * self.recoveryRate
-            g = par[2] * (1. - totalInfected / CC)
+            g = par[2] * (P / self.totalPopulation) * (1. - totalInfected / CC)
 
             if g < 0:
                 print('WARNING: negative growth rate coefficient')
 
             Nn = N
-            N  -= self.dt * N * (g - self.recoveryRate)
+            N -= self.dt * N * (g - self.recoveryRate)
 
             CCn = CC
-            CC -= self.dt * par[2] / self.transmissionProbability * (Nn * g) * (1. - CC / self.totalPopulation)
+            CC -= self.dt * par[2] * (P / self.totalPopulation) / self.transmissionProbability * (Nn * g) * (1. - CC / P)
 
-            if CCn / self.totalPopulation > 1:
+            P -= - self.dt * self.mortality * self.recoveryRate * Nn * P / self.totalPopulation
+
+            if CCn / P > 1:
                 print('WARNING: negative carrying capacity coefficient')
 
             if Nn * self.dt > historyActiveDt:
