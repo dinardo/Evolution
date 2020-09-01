@@ -62,76 +62,82 @@ class evolution(object):
         return self.evolve(t[0], par)[0] if t[0] >= self.tStart else self.reverseEvolve(t[0], par)[0]
 
     def evolve(self, t, par, doLookUp = False):
-        T   = t - self.tStart
-        N   = par[0] / self.symptomaticFraction
-        CC  = par[1]
-        CCn = 0.
-        P   = self.totalPopulation
+        time = t - self.tStart
+        N    = par[0] / self.symptomaticFraction
+        CC   = par[1]
+        CCn  = 0.
+        T    = self.totalPopulation
         totalInfected = 0.
         historyActiveDt = self.historyActiveDt / self.symptomaticFraction
         if doLookUp == True:
-            self.lookUpTable = np.zeros(int(round(T/self.dt,1)) + 1)
+            self.lookUpTable = np.zeros(int(round(time/self.dt,1)) + 1)
             self.bins = [self.tStart + i * self.dt for i in range(len(self.lookUpTable))]
 
-        for n in range(int(round(T/self.dt,1))):
+        for n in range(int(round(time/self.dt,1))):
             if doLookUp == True:
                 self.lookUpTable[n] = N * self.symptomaticFraction
 
             totalInfected = N + historyActiveDt * self.recoveryRate
-            g = par[2] * (P / self.totalPopulation) * (1. - totalInfected / CC)
-
-            if g < 0:
-                print('WARNING: negative growth rate coefficient')
+            g = par[2] * (T / self.totalPopulation) * (1. - totalInfected / CC)
 
             Nn = N
             N += self.dt * N * (g - self.recoveryRate)
 
             CCn = CC
-            CC += self.dt * par[2] * (P / self.totalPopulation) / self.transmissionProbability * (Nn * g) * (1. - CC / P)
+            CC += self.dt * par[2] * (T / self.totalPopulation) / self.transmissionProbability * (Nn * g) * (1. - CC / T)
 
-            P += - self.dt * self.mortality * self.recoveryRate * Nn * P / self.totalPopulation
+            T += - self.dt * self.mortality * self.recoveryRate * Nn
 
-            if CCn / P > 1:
-                print('WARNING: negative carrying capacity coefficient')
+            if g < 0:
+                print('WARNING: negative growth rate coefficient', g, 'at time:', n*self.dt + self.tStart)
+
+            if CCn / T > 1:
+                print('WARNING: negative carrying capacity coefficient', CCn / T, 'at time:', n*self.dt + self.tStart)
+
+            if T < 0:
+                print('WARNING: negative total population', T, 'at time:', n*self.dt + self.tStart)
 
             historyActiveDt += Nn * self.dt
 
         if doLookUp == True:
-            self.lookUpTable[int(round(T/self.dt,1))] = N * self.symptomaticFraction
+            self.lookUpTable[int(round(time/self.dt,1))] = N * self.symptomaticFraction
 
-        return [N * self.symptomaticFraction, historyActiveDt * self.symptomaticFraction, (totalInfected / CCn) if CCn != 0. else 0., CC]
+        return [N * self.symptomaticFraction, historyActiveDt * self.symptomaticFraction, (totalInfected / CCn) if CCn != 0. else 0., CC, T]
 
     def reverseEvolve(self, t, par, doLookUp = False):
-        T  = self.tStart - t
-        N  = par[0] / self.symptomaticFraction
-        CC = par[1]
-        P  = self.totalPopulation
+        time = self.tStart - t
+        N    = par[0] / self.symptomaticFraction
+        CC   = par[1]
+        T    = self.totalPopulation
         totalInfected = 0.
         historyActiveDt = self.historyActiveDt / self.symptomaticFraction
         lookUpTable = []
         if doLookUp == True:
-            lookUpTable = np.zeros(int(round(T/self.dt,1)))
+            lookUpTable = np.zeros(int(round(time/self.dt,1)))
 
-        for n in range(int(round(T/self.dt,1))):
+        for n in range(int(round(time/self.dt,1))):
             totalInfected = N + historyActiveDt * self.recoveryRate
-            g = par[2] * (P / self.totalPopulation) * (1. - totalInfected / CC)
-
-            if g < 0:
-                print('WARNING: negative growth rate coefficient')
+            g = par[2] * (T / self.totalPopulation) * (1. - totalInfected / CC)
 
             Nn = N
             N -= self.dt * N * (g - self.recoveryRate)
 
             CCn = CC
-            CC -= self.dt * par[2] * (P / self.totalPopulation) / self.transmissionProbability * (Nn * g) * (1. - CC / P)
+            CC -= self.dt * par[2] * (T / self.totalPopulation) / self.transmissionProbability * (Nn * g) * (1. - CC / T)
 
-            P -= - self.dt * self.mortality * self.recoveryRate * Nn * P / self.totalPopulation
+            T -= - self.dt * self.mortality * self.recoveryRate * Nn
 
-            if CCn / P > 1:
-                print('WARNING: negative carrying capacity coefficient')
+            if g < 0:
+                print('WARNING: negative growth rate coefficient', g, 'at time:', n*self.dt + self.tStart)
+
+            if CCn / T > 1:
+                print('WARNING: negative carrying capacity coefficient', CCn / T, 'at time:', n*self.dt + self.tStart)
+
+            if T < 0:
+                print('WARNING: negative total population', T, 'at time:', n*self.dt + self.tStart)
 
             if Nn * self.dt > historyActiveDt:
-                historyActiveDt -= Nn * self.dt
+                historyActiveDt -= Nn * self.dt if Nn * self.dt > historyActiveDt else 0.
             else:
                 historyActiveDt = 0.
 
@@ -147,36 +153,30 @@ class evolution(object):
         self.parValues[0] = par[0]
         self.parValues[1] = par[1]
         self.parValues[2] = par[2]
-        T = 0.
+
+        time = t if t <= self.tStop else self.tStop
+
+        [active, historyActiveDt, Pinf, CC, T] = self.evolve(time, self.parValues, doLookUp)
 
         if t <= self.tStop:
-            T = t
-        else:
-            T = self.tStop
-
-        [active, historyActiveDt, Pinf, CC] = self.evolve(T, self.parValues, doLookUp)
-
-        if t <= self.tStop:
-            return [active, historyActiveDt, Pinf, CC]
+            return [active, historyActiveDt, Pinf, CC, T]
 
         for i,ev in enumerate(evolutions):
             ev.parValues[0] = ev.parValues[0] if doDefaults == True and ev.parValues[0] != 0. else active
             ev.parValues[1] = ev.parValues[1] if doDefaults == True and ev.parValues[1] != 0. else CC
             ev.parValues[2] = par[3+i]
             ev.historyActiveDt = historyActiveDt
+            ev.totalPopulation = T
 
-            if t <= ev.tStop:
-                T = t
-            else:
-                T = ev.tStop
+            time = t if t <= ev.tStop else ev.tStop
 
-            [active, historyActiveDt, Pinf, CC] = ev.evolve(T, ev.parValues, doLookUp)
+            [active, historyActiveDt, Pinf, CC, T] = ev.evolve(time, ev.parValues, doLookUp)
             if doLookUp == True:
                 self.lookUpTable = np.concatenate([self.lookUpTable[:-1], ev.lookUpTable])
                 self.bins = self.bins[:-1] + ev.bins
 
             if t <= ev.tStop:
-                return [active, historyActiveDt, Pinf, CC]
+                return [active, historyActiveDt, Pinf, CC, T]
 
     def totalInfected(self, up2Time):
         return self.evolve(up2Time, self.parValues)[0] / self.symptomaticFraction + self.totalRecovered(up2Time)
