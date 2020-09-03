@@ -465,7 +465,7 @@ def runModel(totalPopulation, symptomaticFraction, transmissionProbability, reco
     evolutions.extend([evolution([0, 0, parValues[9]], timeList[5], timeList[7], 0, recoveryRate, symptomaticFraction, transmissionProbability)])
 
 
-    evolve.evolveGlobal(evolutions, evolutions[-1].tStop, parValues, True, True)
+    evolve.evolveGlobal(evolutions, evolutions[-1].tStop, parValues, True)
 
     for t in timeList:
         print('==> Percentage population with antibodies', round(100. * evolve.totalInfectedGlobal(evolutions, t, parValues) / evolve.totalPopulation), '%, at day', t, '(herd immunity at', evolve.herdImmunityGlobal(evolutions, t, parValues), '%)')

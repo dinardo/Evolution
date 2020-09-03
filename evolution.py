@@ -149,7 +149,7 @@ class evolution(object):
     def evolveGlobalWrapper(self, t, par):
         return self.evolveGlobal(self.evolutions, t[0], par)[0]
 
-    def evolveGlobal(self, evolutions, t, par, doLookUp = False, doDefaults = False):
+    def evolveGlobal(self, evolutions, t, par, doLookUp = False):
         self.parValues[0] = par[0]
         self.parValues[1] = par[1]
         self.parValues[2] = par[2]
@@ -162,8 +162,8 @@ class evolution(object):
             return [active, historyActiveDt, Pinf, CC, T]
 
         for i,ev in enumerate(evolutions):
-            ev.parValues[0] = ev.parValues[0] if doDefaults == True and ev.parValues[0] != 0. else active
-            ev.parValues[1] = ev.parValues[1] if doDefaults == True and ev.parValues[1] != 0. else CC
+            ev.parValues[0] = active
+            ev.parValues[1] = CC
             ev.parValues[2] = par[3+i]
             ev.historyActiveDt = historyActiveDt
             ev.totalPopulation = T
