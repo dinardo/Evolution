@@ -128,7 +128,7 @@ def analyzeData(country, total, active, recovered, deaths, tStart, tStop, totalP
         evActiveGraphN.Draw('PL same')
         statActive = evActive.addStats(evActive.parNames, evActive.parValues)
 
-        print('==> Active cases, history active cases, p-infected, Carrying capacity, total population alive', evActive.evolve(tStop, evActive.parValues), '@', tStop, 'day')
+        print('==> Active cases, history active cases, p-infected, Carrying capacity, total population alive', evActive.evolve(tStop, evActive.parValues), 'at day', tStop)
         print('==> Percentage population with antibodies', round(100. * evActive.totalInfected(tStop) / totalPopulation), '% at day', tStop, '(herd immunity at', evActive.herdImmunity(), '%)')
         print('==> Doubling time:', round(log(2.)/evActive.parValues[2],1), 'days')
 
@@ -288,7 +288,7 @@ def analyzeData(country, total, active, recovered, deaths, tStart, tStop, totalP
             myCanvRatio03, myGraphRatio03]
 
 
-def scanParameter(ntuple, N, minVal, maxVal, doSmearing, doGlobalFit):
+def scanParameter(ntuple, N, minVal, maxVal, doSmearing, doFit):
     growthRate = 0.13
     carryingCapacity = 4e5
 
@@ -343,7 +343,7 @@ def scanParameter(ntuple, N, minVal, maxVal, doSmearing, doGlobalFit):
         val = minVal + (random() * (maxVal - minVal))
         transmissionProbability = val
 
-        if doGlobalFit == False:
+        if doFit == False:
             ###################
             # Build the model #
             ###################
@@ -469,6 +469,7 @@ def runModel(totalPopulation, symptomaticFraction, transmissionProbability, reco
 
     for t in timeList:
         print('==> Percentage population with antibodies', round(100. * evolve.totalInfectedGlobal(evolutions, t, parValues) / evolve.totalPopulation), '%, at day', t, '(herd immunity at', evolve.herdImmunityGlobal(evolutions, t, parValues), '%)')
+        print('==> Active cases, history active cases, p-infected, Carrying capacity, total population alive', evolve.evolve(t, evolve.parValues), 'at day', t, '\n')
 
     if doSmearing == True:
         evolve.smearing()
@@ -588,7 +589,7 @@ def runToyMC(evolve, nEv, nToy, doSmearing):
 
 def runGlobalFit(country, active, totalPopulation, symptomaticFraction, transmissionProbability, recoveryRate, doSmearing, doFit):
     tStart   = 0
-    tStop    = 9+6+12+42 +61 +45 +30
+    tStop    = 9+6+12+42 +61 +45 +150
     timeList = [9, 9+6, 9+6+12, 9+6+12+42, 9+6+12+42 +61, 9+6+12+42 +61 +45, tStop]
 
     ntuple = [tStart, tStop, totalPopulation, symptomaticFraction, transmissionProbability, recoveryRate]
@@ -635,7 +636,7 @@ def runGlobalFit(country, active, totalPopulation, symptomaticFraction, transmis
         evActiveGraphN.Draw('PL same')
         statActive = evActive.addStats(parNames, parValues)
 
-        print('==> Active cases, history active cases * dt, p-infected, Carrying capacity, total population alive', evActive.evolveGlobal(evolutions, tStop, parValues), '@', tStop, 'day')
+        print('==> Active cases, history active cases * dt, p-infected, Carrying capacity, total population alive', evActive.evolveGlobal(evolutions, tStop, parValues), 'at day', tStop)
         print('==> Percentage population with antibodies', round(100. * evActive.totalInfectedGlobal(evolutions, tStop, parValues) / totalPopulation), '% at day', tStop)
 
         now = TLine(len(active)-1, 0, len(active)-1, evActive.fitFun.Eval(len(active)-1))
@@ -685,7 +686,6 @@ recoveryRate            = 0.023
 transmissionProbability = 0.26
 nFit                    = 1000
 doSmearing              = True
-doGlobalFit             = True
 doFit                   = False
 
 
@@ -715,7 +715,7 @@ graphModel = runModel(totalPopulation, symptomaticFraction, transmissionProbabil
 #graphLocal = analyzeData('Italy', total, active, recovered, deaths, 69, 130, totalPopulation, symptomaticFraction, transmissionProbability, recoveryRate, doSmearing, doFit)
 #graphLocal[3].cd()
 #graphModel[3].Draw('same')
-#graphScan = scanParameter(graphLocal[0], nFit, 0.0, 0.5, doSmearing, doGlobalFit)
+#graphScan = scanParameter(graphLocal[0], nFit, 0.0, 0.5, doSmearing, doFit)
 #graphToy = runToyMC(graphLocal[5], 3878532, nFit, doSmearing)
 
 
@@ -725,7 +725,7 @@ graphModel = runModel(totalPopulation, symptomaticFraction, transmissionProbabil
 graphGlobalFit = runGlobalFit('Italy', active, totalPopulation, symptomaticFraction, transmissionProbability, recoveryRate, doSmearing, doFit)
 graphGlobalFit[1].cd()
 graphModel[5].Draw('same')
-#graphGlobalScan = scanParameter(graphGlobalFit[0], nFit, 0.0, 1.0, doSmearing, doGlobalFit)
+#graphGlobalScan = scanParameter(graphGlobalFit[0], nFit, 0.0, 1.0, doSmearing, doFit)
 
 """
 ##################################
