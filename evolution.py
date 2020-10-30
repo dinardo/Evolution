@@ -86,7 +86,7 @@ class evolution(object):
             CCn = CC
             CC += self.dt * par[2] * (T / self.totalPopulation) / self.transmissionProbability * (Nn * g) * (1. - CC / T)
 
-            T += - self.dt * self.mortality * self.recoveryRate * Nn
+            # T += - self.dt * self.mortality * self.recoveryRate * Nn @TMP@
 
             if g < 0:
                 print('WARNING: negative growth rate coefficient', g, 'at time:', n*self.dt + self.tStart)
@@ -125,7 +125,7 @@ class evolution(object):
             CCn = CC
             CC -= self.dt * par[2] * (T / self.totalPopulation) / self.transmissionProbability * (Nn * g) * (1. - CC / T)
 
-            T -= - self.dt * self.mortality * self.recoveryRate * Nn
+            # T -= - self.dt * self.mortality * self.recoveryRate * Nn @TMP@
 
             if g < 0:
                 print('WARNING: negative growth rate coefficient', g, 'at time:', n*self.dt + self.tStart)
