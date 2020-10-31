@@ -420,7 +420,7 @@ def runModel(totalPopulation, symptomaticFraction, transmissionProbability, reco
     tStart    = 0
     tStop     = 9+6+12+42 +61 +40 +50 +200
     timeList  = [9, 9+6, 9+6+12, 9+6+12+42, 9+6+12+42 +61, 9+6+12+42 +61 +40, 9+6+12+42 +61 +40 +50, tStop]
-    parValues = [1894, 16052, 0.435, 0.438, 0.308, 0.216, 0.141, 0.509, 0.216, 0.4]
+    parValues = [1894, 16052, 0.435, 0.438, 0.308, 0.216, 0.054, 0.154, 0.299, 0.383]
 
     myCanvModels.cd(1)
     myGraphTmp1.SetPoint(myGraphTmp1.GetN(), 0, 0)
@@ -460,7 +460,7 @@ def runModel(totalPopulation, symptomaticFraction, transmissionProbability, reco
     ###################
     evolve = evolution(parValues[0:3], tStart, timeList[0], totalPopulation, recoveryRate, symptomaticFraction, transmissionProbability)
     evolutions = [evolution([0, 0, parValues[3+i]], timeList[i], timeList[i+1],  0, recoveryRate, symptomaticFraction, transmissionProbability) for i in range(3)]
-    evolutions.extend([evolution([0, 0, parValues[6]], timeList[3], timeList[4], 0, 0.026,        symptomaticFraction, transmissionProbability / 8)])
+    evolutions.extend([evolution([0, 0, parValues[6]], timeList[3], timeList[4], 0, 0.025,        symptomaticFraction, transmissionProbability / 8)])
     evolutions.extend([evolution([0, 0, parValues[7]], timeList[4], timeList[5], 0, recoveryRate, symptomaticFraction, transmissionProbability / 2.5)])
     evolutions.extend([evolution([0, 0, parValues[8]], timeList[5], timeList[6], 0, recoveryRate, symptomaticFraction, transmissionProbability / 1.5)])
     evolutions.extend([evolution([0, 0, parValues[9]], timeList[6], timeList[7], 0, recoveryRate, symptomaticFraction, transmissionProbability)])
@@ -483,7 +483,7 @@ def runModel(totalPopulation, symptomaticFraction, transmissionProbability, reco
     myCanvModels.cd(2)
     graphR0 = evolve.getGraphR0(graphN)
     graphR0.Draw('L same')
-    """
+
     myCanvModels.cd(3)
     graphP = evolve.getGraphGlobalPinfect(evolutions, parValues)
     graphP.Draw('L same')
@@ -491,7 +491,7 @@ def runModel(totalPopulation, symptomaticFraction, transmissionProbability, reco
     myCanvModels.cd(4)
     graphCC = evolve.getGraphGlobalCarryingCapacity(evolutions, parValues)
     graphCC.Draw('L same')
-    """
+
     """
     evolve1 = evolution([220, 8500, 0.17], 0, 800, totalPopulation, recoveryRate, symptomaticFraction, transmissionProbability)
     evolve1.evolve(evolve1.tStop, evolve1.parValues, True)
@@ -516,8 +516,7 @@ def runModel(totalPopulation, symptomaticFraction, transmissionProbability, reco
 
     return [myCanvModels, myGraphTmp1, myGraphTmp2, myGraphTmp3, myGraphTmp4,
 #            graph1, graph2, graph3]
-#            graphN, graphR0, graphP, graphCC]
-            graphN, graphR0]
+            graphN, graphR0, graphP, graphCC]
 
 
 def runToyMC(evolve, nEv, nToy, doSmearing):
@@ -615,7 +614,7 @@ def runGlobalFit(country, active, totalPopulation, symptomaticFraction, transmis
     myGraphActive.GetHistogram().GetXaxis().SetTitle('Time (days)')
     myGraphActive.GetHistogram().GetYaxis().SetTitle('Active cases affected by CoViD-19')
 
-    ntuple.extend([0, xValues, yValues, erryValues, timeList, 1894, 16052, 0.435, 0.438, 0.308, 0.216, 0.435 / 8, 0.435 / 2.5, 0.435 / 1.5, 0.435])
+    ntuple.extend([0, xValues, yValues, erryValues, timeList, 1894, 16052, 0.435, 0.438, 0.308, 0.216, 0.054, 0.435 / 2.5, 0.435 / 1.5, 0.435])
 
     if doFit == True:
         ###################
@@ -623,13 +622,14 @@ def runGlobalFit(country, active, totalPopulation, symptomaticFraction, transmis
         ###################
         evActive = evolution([ntuple[11], ntuple[12], ntuple[13]], tStart, timeList[0], totalPopulation, recoveryRate, symptomaticFraction, transmissionProbability)
         evolutions = [evolution([0, 0, ntuple[14+i]], timeList[i], timeList[i+1],    0, recoveryRate, symptomaticFraction, transmissionProbability) for i in range(3)]
-        evolutions.extend([evolution([0, 0, ntuple[14+3]], timeList[3], timeList[4], 0, 0.026,        symptomaticFraction, transmissionProbability / 8)])
+        evolutions.extend([evolution([0, 0, ntuple[14+3]], timeList[3], timeList[4], 0, 0.025,        symptomaticFraction, transmissionProbability / 8)])
         evolutions.extend([evolution([0, 0, ntuple[14+4]], timeList[4], timeList[5], 0, recoveryRate, symptomaticFraction, transmissionProbability / 2.5)])
         evolutions.extend([evolution([0, 0, ntuple[14+5]], timeList[5], timeList[6], 0, recoveryRate, symptomaticFraction, transmissionProbability / 1.5)])
         evolutions.extend([evolution([0, 0, ntuple[14+6]], timeList[6], timeList[7], 0, recoveryRate, symptomaticFraction, transmissionProbability)])
 
 
-        istat, parValues, parNames = evActive.runGlobalOptimization(evolutions, xValues, yValues, erryValues, [0,1,2,3,4,5], doSmearing)
+        istat, parValues, parNames = evActive.runGlobalOptimization(evolutions, xValues, yValues, erryValues, [0,1,2,3,4,5,6], doSmearing)
+
         evActive.evolveGlobal(evolutions, evolutions[-1].tStop, parValues, True)
         if doSmearing == True:
             evActive.smearing()
