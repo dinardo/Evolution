@@ -232,7 +232,7 @@ def analyzeData(country, total, active, recovered, deaths, tStart, tStop, totalP
 
     sortedKeys = sorted(deaths.keys())
     for i,k in enumerate(sortedKeys[1:]):
-        numerator   = abs(deaths[k] + deaths[sortedKeys[i]] + recovered[k] + recovered[sortedKeys[i]])
+        numerator   = abs(deaths[k] - deaths[sortedKeys[i]] + recovered[k] - recovered[sortedKeys[i]])
         denominator = active[k]
         myGraphRatio02.SetPoint(myGraphRatio02.GetN(), myGraphRatio02.GetN()+1, numerator / denominator if denominator != 0 else 0)
         myGraphRatio02.SetPointError(myGraphRatio02.GetN()-1, 0, (myGraphRatio02.GetY()[myGraphRatio02.GetN()-1] * sqrt(numerator/pow(numerator,2) + denominator/pow(denominator,2))) if denominator != 0 else 0)
@@ -614,7 +614,7 @@ def runGlobalFit(country, active, totalPopulation, symptomaticFraction, transmis
     myGraphActive.GetHistogram().GetXaxis().SetTitle('Time (days)')
     myGraphActive.GetHistogram().GetYaxis().SetTitle('Active cases affected by CoViD-19')
 
-    ntuple.extend([0, xValues, yValues, erryValues, timeList, 1894, 16052, 0.435, 0.438, 0.308, 0.216, 0.054, 0.435 / 2.5, 0.435 / 1.5, 0.435])
+    ntuple.extend([0, xValues, yValues, erryValues, timeList, 1894, 16052, 0.435, 0.438, 0.308, 0.216, 0.054, 0.435 / 2.5, 0.435 / 1.5, 0.435]) # 0.0133, 0.175, 0.217, 0.393
 
     if doFit == True:
         ###################
@@ -622,13 +622,13 @@ def runGlobalFit(country, active, totalPopulation, symptomaticFraction, transmis
         ###################
         evActive = evolution([ntuple[11], ntuple[12], ntuple[13]], tStart, timeList[0], totalPopulation, recoveryRate, symptomaticFraction, transmissionProbability)
         evolutions = [evolution([0, 0, ntuple[14+i]], timeList[i], timeList[i+1],    0, recoveryRate, symptomaticFraction, transmissionProbability) for i in range(3)]
-        evolutions.extend([evolution([0, 0, ntuple[14+3]], timeList[3], timeList[4], 0, 0.025,        symptomaticFraction, transmissionProbability / 8)])
+        evolutions.extend([evolution([0, 0, ntuple[14+3]], timeList[3], timeList[4], 0, 0.035,        symptomaticFraction, transmissionProbability / 8)])
         evolutions.extend([evolution([0, 0, ntuple[14+4]], timeList[4], timeList[5], 0, recoveryRate, symptomaticFraction, transmissionProbability / 2.5)])
         evolutions.extend([evolution([0, 0, ntuple[14+5]], timeList[5], timeList[6], 0, recoveryRate, symptomaticFraction, transmissionProbability / 1.5)])
         evolutions.extend([evolution([0, 0, ntuple[14+6]], timeList[6], timeList[7], 0, recoveryRate, symptomaticFraction, transmissionProbability)])
 
 
-        istat, parValues, parNames = evActive.runGlobalOptimization(evolutions, xValues, yValues, erryValues, [0,1,2,3,4,5,6], doSmearing)
+        istat, parValues, parNames = evActive.runGlobalOptimization(evolutions, xValues, yValues, erryValues, [0,1,2,3,4,5], doSmearing)
 
         evActive.evolveGlobal(evolutions, evolutions[-1].tStop, parValues, True)
         if doSmearing == True:
@@ -688,7 +688,7 @@ recoveryRate            = 0.023
 transmissionProbability = 0.26
 nFit                    = 1000
 doSmearing              = True
-doFit                   = False
+doFit                   = True
 
 
 ##################################
@@ -708,13 +708,13 @@ total     = readDataFromFile(fileName, 13)
 ##############
 # Plot model #
 ##############
-graphModel = runModel(totalPopulation, symptomaticFraction, transmissionProbability, recoveryRate, doSmearing)
+#graphModel = runModel(totalPopulation, symptomaticFraction, transmissionProbability, recoveryRate, doSmearing)
 
 
 ##########################
 # Single-period analysis #
 ##########################
-#graphLocal = analyzeData('Italy', total, active, recovered, deaths, 230, 250, totalPopulation, symptomaticFraction, transmissionProbability, recoveryRate, doSmearing, doFit)
+#graphLocal = analyzeData('Italy', total, active, recovered, deaths, 0, 260, totalPopulation, symptomaticFraction, transmissionProbability, recoveryRate, doSmearing, doFit)
 #graphLocal[3].cd()
 #graphModel[3].Draw('same')
 #graphScan = scanParameter(graphLocal[0], nFit, 0.0, 0.5, doSmearing, doFit)
@@ -725,8 +725,8 @@ graphModel = runModel(totalPopulation, symptomaticFraction, transmissionProbabil
 # Multi-period analysis #
 #########################
 graphGlobalFit = runGlobalFit('Italy', active, totalPopulation, symptomaticFraction, transmissionProbability, recoveryRate, doSmearing, doFit)
-graphGlobalFit[1].cd()
-graphModel[5].Draw('same')
+#graphGlobalFit[1].cd()
+#graphModel[5].Draw('same')
 #graphGlobalScan = scanParameter(graphGlobalFit[0], nFit, 0.0, 1.0, doSmearing, doFit)
 
 """
